@@ -4,23 +4,33 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import styles from './login.module.css';
 import { FaUser, FaLock, FaGlobe } from 'react-icons/fa';
+import { authApi } from '@/services/api';
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      const response = await authApi.login({ username, password });
+      if (response.status === true) {
+        const payload = response.response.data;
+        localStorage.setItem('token', payload.access_token);
+        localStorage.setItem('user', JSON.stringify(payload.user));
+        router.push('/');
+      } else {
+        alert('Login failed: ' + response.message);
+      }
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Login failed');
+    } finally {
       setIsLoading(false);
-      // Navigate to dashboard
-      router.push('/');
-    }, 1000);
+    }
   };
 
   return (
@@ -35,14 +45,14 @@ export default function LoginPage() {
 
         <form onSubmit={handleLogin}>
           <div className={styles.formGroup}>
-            <label className={styles.label}>Email Address</label>
+            <label className={styles.label}>Username</label>
             <div className={styles.inputWrapper}>
               <input 
-                type="email" 
+                type="text" 
                 className={styles.input} 
-                placeholder="admin@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Enter your username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
                 required
               />
               <FaUser className={styles.inputIcon} />
