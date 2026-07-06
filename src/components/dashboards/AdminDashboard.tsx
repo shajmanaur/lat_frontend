@@ -1,37 +1,77 @@
-import React from 'react';
+'use client';
+import React, { useEffect, useState } from 'react';
 import { Users, User, ClipboardList, ArrowRight, UserCheck, UserX, FileCheck, CheckCircle, Info, UploadCloud, FileText, Calendar } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import Link from 'next/link';
-
-const gradeData = [
-  { name: 'Grade 3', students: 625114, fill: '#A78BFA' },
-  { name: 'Grade 5', students: 632445, fill: '#34D399' },
-  { name: 'Grade 8', students: 634897, fill: '#60A5FA' },
-];
-
-const regionData = [
-  { name: 'North Region', value: 321445 },
-  { name: 'East Region', value: 295231 },
-  { name: 'West Region', value: 278650 },
-  { name: 'South Region', value: 267890 },
-  { name: 'Central Region', value: 232114 },
-];
-
-const processingData = [
-  { name: 'Not Started', value: 213544, color: '#94A3B8' },
-  { name: 'OMR Entry in Progress', value: 256781, color: '#F59E0B' },
-  { name: 'OMR Completed', value: 143219, color: '#3B82F6' },
-  { name: 'Evaluated', value: 1478912, color: '#10B981' },
-];
-
-const activities = [
-  { id: 1, type: 'completed', text: 'OMR processing completed', subtext: 'Batch ID: OMR_2025_0456', time: '1 hour ago', icon: <CheckCircle size={16} color="#10B981" />, bg: '#D1FAE5' },
-  { id: 2, type: 'progress', text: 'OMR entry in progress', subtext: 'Teacher: KV_1234_Grade5_A', time: '2 hours ago', icon: <FileText size={16} color="#3B82F6" />, bg: '#DBEAFE' },
-  { id: 3, type: 'user', text: 'New coordinator added', subtext: 'Name: Rajesh Kumar (KV_ID: 4782)', time: '4 hours ago', icon: <User size={16} color="#8B5CF6" />, bg: '#EDE9FE' },
-  { id: 4, type: 'completed', text: 'OMR entry completed', subtext: 'Teacher: KV_5678_Grade3_B', time: '5 hours ago', icon: <FileCheck size={16} color="#F59E0B" />, bg: '#FEF3C7' },
-];
+import axios from 'axios';
 
 export default function AdminDashboard({ roleName }: { roleName: string }) {
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({
+    coordinators: 0,
+    teachers: 0,
+    students: 0,
+    omrEntered: 0,
+    studentsPresent: 0,
+    studentsAbsent: 0,
+    evaluated: 0,
+  });
+  
+  const [gradeData, setGradeData] = useState([]);
+  const [regionData, setRegionData] = useState([]);
+  const [processingData, setProcessingData] = useState([]);
+  const [activities, setActivities] = useState([]);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api/v1';
+        const res = await axios.get(`${apiUrl}/dashboard/stats`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        
+        if (res.data.status === true) {
+          const d = res.data.response;
+          setStats({
+            coordinators: d.coordinators || 0,
+            teachers: d.teachers || 0,
+            students: d.students || 0,
+            omrEntered: d.omrEntered || 0,
+            studentsPresent: d.studentsPresent || 0,
+            studentsAbsent: d.studentsAbsent || 0,
+            evaluated: d.evaluated || 0,
+          });
+          setGradeData(d.gradeData || []);
+          setRegionData(d.regionData || []);
+          setProcessingData(d.processingData || []);
+          
+          const mappedActivities = (d.activities || []).map((act: any) => ({
+            ...act,
+            icon: act.icon_type === 'check' ? <CheckCircle size={16} color="#10B981" /> : <FileText size={16} color="#3B82F6" />
+          }));
+          setActivities(mappedActivities);
+        }
+      } catch (err) {
+        console.error('Failed to fetch dashboard stats', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchStats();
+  }, []);
+
+  if (loading) {
+    return <div className="p-8 text-center text-slate-500">Loading dashboard data...</div>;
+  }
+
+  const presentPct = stats.students > 0 ? ((stats.studentsPresent / stats.students) * 100).toFixed(2) : '0.00';
+  const absentPct = stats.students > 0 ? ((stats.studentsAbsent / stats.students) * 100).toFixed(2) : '0.00';
+  const omrPct = stats.students > 0 ? ((stats.omrEntered / stats.students) * 100).toFixed(2) : '0.00';
+  const evalPct = stats.students > 0 ? ((stats.evaluated / stats.students) * 100).toFixed(2) : '0.00';
+
+  const maxRegionValue = regionData.length > 0 ? Math.max(...regionData.map((r: any) => r.value)) : 1;
+
   return (
     <div className="flex flex-col gap-6">
       
@@ -59,7 +99,7 @@ export default function AdminDashboard({ roleName }: { roleName: string }) {
             </div>
             <div>
               <div className="text-sm font-medium text-slate-800">Coordinators</div>
-              <div style={{ fontSize: '1.5rem', fontWeight: 700, lineHeight: 1.2 }}>12,742</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 700, lineHeight: 1.2 }}>{stats.coordinators.toLocaleString('en-IN')}</div>
               <div className="text-xs text-muted mt-1">Active Coordinators</div>
             </div>
           </div>
@@ -75,7 +115,7 @@ export default function AdminDashboard({ roleName }: { roleName: string }) {
             </div>
             <div>
               <div className="text-sm font-medium text-slate-800">Teachers</div>
-              <div style={{ fontSize: '1.5rem', fontWeight: 700, lineHeight: 1.2 }}>85,321</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 700, lineHeight: 1.2 }}>{stats.teachers.toLocaleString('en-IN')}</div>
               <div className="text-xs text-muted mt-1">Across All Schools</div>
             </div>
           </div>
@@ -91,7 +131,7 @@ export default function AdminDashboard({ roleName }: { roleName: string }) {
             </div>
             <div>
               <div className="text-sm font-medium text-slate-800">Students Registered</div>
-              <div style={{ fontSize: '1.5rem', fontWeight: 700, lineHeight: 1.2 }}>18,92,456</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 700, lineHeight: 1.2 }}>{stats.students.toLocaleString('en-IN')}</div>
               <div className="text-xs text-muted mt-1">Total Students</div>
             </div>
           </div>
@@ -107,7 +147,7 @@ export default function AdminDashboard({ roleName }: { roleName: string }) {
             </div>
             <div>
               <div className="text-sm font-medium text-slate-800">OMR Entered</div>
-              <div style={{ fontSize: '1.5rem', fontWeight: 700, lineHeight: 1.2 }}>14,78,912</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 700, lineHeight: 1.2 }}>{stats.omrEntered.toLocaleString('en-IN')}</div>
               <div className="text-xs text-muted mt-1">Students Responses</div>
             </div>
           </div>
@@ -130,8 +170,8 @@ export default function AdminDashboard({ roleName }: { roleName: string }) {
                 <UserCheck size={24} color="#8B5CF6" />
               </div>
               <div className="text-xs text-slate-500 font-medium mb-1">Students Present</div>
-              <div className="font-bold text-lg text-slate-800">16,45,231</div>
-              <div className="text-xs font-semibold text-emerald-500 mt-1">86.93%</div>
+              <div className="font-bold text-lg text-slate-800">{stats.studentsPresent.toLocaleString('en-IN')}</div>
+              <div className="text-xs font-semibold text-emerald-500 mt-1">{presentPct}%</div>
             </div>
 
             <div className="flex flex-col items-center justify-center text-center">
@@ -139,8 +179,8 @@ export default function AdminDashboard({ roleName }: { roleName: string }) {
                 <UserX size={24} color="#EF4444" />
               </div>
               <div className="text-xs text-slate-500 font-medium mb-1">Students Absent</div>
-              <div className="font-bold text-lg text-slate-800">2,47,225</div>
-              <div className="text-xs font-semibold text-red-500 mt-1">13.07%</div>
+              <div className="font-bold text-lg text-slate-800">{stats.studentsAbsent.toLocaleString('en-IN')}</div>
+              <div className="text-xs font-semibold text-red-500 mt-1">{absentPct}%</div>
             </div>
 
             <div className="flex flex-col items-center justify-center text-center">
@@ -148,8 +188,8 @@ export default function AdminDashboard({ roleName }: { roleName: string }) {
                 <FileCheck size={24} color="#3B82F6" />
               </div>
               <div className="text-xs text-slate-500 font-medium mb-1">OMR Entered</div>
-              <div className="font-bold text-lg text-slate-800">14,78,912</div>
-              <div className="text-xs font-semibold text-emerald-500 mt-1">78.27%</div>
+              <div className="font-bold text-lg text-slate-800">{stats.omrEntered.toLocaleString('en-IN')}</div>
+              <div className="text-xs font-semibold text-emerald-500 mt-1">{omrPct}%</div>
             </div>
 
             <div className="flex flex-col items-center justify-center text-center">
@@ -157,8 +197,8 @@ export default function AdminDashboard({ roleName }: { roleName: string }) {
                 <CheckCircle size={24} color="#10B981" />
               </div>
               <div className="text-xs text-slate-500 font-medium mb-1">Evaluated</div>
-              <div className="font-bold text-lg text-slate-800">14,78,912</div>
-              <div className="text-xs font-semibold text-emerald-500 mt-1">78.27%</div>
+              <div className="font-bold text-lg text-slate-800">{stats.evaluated.toLocaleString('en-IN')}</div>
+              <div className="text-xs font-semibold text-emerald-500 mt-1">{evalPct}%</div>
             </div>
 
           </div>
@@ -171,7 +211,7 @@ export default function AdminDashboard({ roleName }: { roleName: string }) {
             <div className="w-1/2 relative h-full flex items-center justify-center min-h-[160px]">
               <div className="absolute inset-0 flex flex-col items-center justify-center">
                 <span className="text-xs text-slate-500">Total</span>
-                <span className="font-bold text-slate-800">18,92,456</span>
+                <span className="font-bold text-slate-800">{stats.students.toLocaleString('en-IN')}</span>
                 <span className="text-xs text-slate-500">Students</span>
               </div>
               <ResponsiveContainer width="100%" height="100%">
@@ -186,7 +226,7 @@ export default function AdminDashboard({ roleName }: { roleName: string }) {
                     dataKey="value"
                     stroke="none"
                   >
-                    {processingData.map((entry, index) => (
+                    {processingData.map((entry: any, index: number) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
@@ -194,7 +234,7 @@ export default function AdminDashboard({ roleName }: { roleName: string }) {
               </ResponsiveContainer>
             </div>
             <div className="w-1/2 flex flex-col gap-3 text-xs">
-              {processingData.map((d, i) => (
+              {processingData.map((d: any, i: number) => (
                 <div key={i} className="flex flex-col">
                   <div className="flex items-center gap-2 mb-1">
                     <span style={{ color: d.color }}>●</span>
@@ -226,10 +266,10 @@ export default function AdminDashboard({ roleName }: { roleName: string }) {
               <BarChart data={gradeData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748B' }} dy={10} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748B' }} tickFormatter={(val) => val >= 100000 ? `${(val/100000).toFixed(0)}L` : val} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748B' }} tickFormatter={(val) => val >= 100000 ? `${(val/100000).toFixed(0)}L` : val.toString()} />
                 <Tooltip cursor={{ fill: 'transparent' }} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }} />
                 <Bar dataKey="students" radius={[4, 4, 0, 0]} maxBarSize={40}>
-                  {gradeData.map((entry, index) => (
+                  {gradeData.map((entry: any, index: number) => (
                     <Cell key={`cell-${index}`} fill={entry.fill} />
                   ))}
                 </Bar>
@@ -247,15 +287,18 @@ export default function AdminDashboard({ roleName }: { roleName: string }) {
             </div>
           </div>
           <div className="flex flex-col gap-4 flex-1 justify-center">
-            {regionData.map((region, i) => (
+            {regionData.map((region: any, i: number) => (
               <div key={i} className="flex items-center gap-3">
-                <div className="w-20 text-xs text-slate-600 truncate">{region.name}</div>
+                <div className="w-20 text-xs text-slate-600 truncate" title={region.name}>{region.name}</div>
                 <div className="flex-1 bg-slate-100 h-2.5 rounded-full overflow-hidden">
-                  <div className="bg-indigo-500 h-full rounded-full" style={{ width: `${(region.value / regionData[0].value) * 100}%` }}></div>
+                  <div className="bg-indigo-500 h-full rounded-full" style={{ width: `${(region.value / maxRegionValue) * 100}%` }}></div>
                 </div>
                 <div className="w-16 text-right text-xs font-semibold text-slate-700">{region.value.toLocaleString('en-IN')}</div>
               </div>
             ))}
+            {regionData.length === 0 && (
+              <div className="text-center text-xs text-slate-500">No data available</div>
+            )}
           </div>
         </div>
 
@@ -266,7 +309,7 @@ export default function AdminDashboard({ roleName }: { roleName: string }) {
             <Link href="#" className="text-xs font-medium text-indigo-600">View all</Link>
           </div>
           <div className="flex flex-col gap-4">
-            {activities.map((act) => (
+            {activities.map((act: any) => (
               <div key={act.id} className="flex gap-3">
                 <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: act.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   {act.icon}
@@ -275,9 +318,14 @@ export default function AdminDashboard({ roleName }: { roleName: string }) {
                   <div className="text-xs font-semibold text-slate-800 truncate">{act.text}</div>
                   <div className="text-[10px] text-slate-500 truncate mt-0.5">{act.subtext}</div>
                 </div>
-                <div className="text-[10px] text-slate-400 whitespace-nowrap">{act.time}</div>
+                <div className="text-[10px] text-slate-400 whitespace-nowrap">
+                  {new Date(act.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </div>
               </div>
             ))}
+            {activities.length === 0 && (
+              <div className="text-center text-xs text-slate-500">No activities yet</div>
+            )}
           </div>
         </div>
 
@@ -295,4 +343,3 @@ export default function AdminDashboard({ roleName }: { roleName: string }) {
     </div>
   );
 }
-// Note: We're rendering the Calendar icon by importing it locally if missing, wait I used Calendar but didn't import it. I'll fix that.
