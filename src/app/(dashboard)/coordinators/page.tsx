@@ -361,7 +361,7 @@ export default function CoordinatorsPage() {
                       }}>
                         <button 
                           style={{ width: '100%', padding: '10px 16px', textAlign: 'left', borderBottom: '1px solid var(--border-light)', background: 'transparent', cursor: 'pointer', fontSize: '0.85rem' }}
-                          onClick={() => { setEditForm({ ...row }); setShowEditModal(true); setActiveDropdown(null); }}
+                          onClick={() => { setEditForm({ ...row, region: row.region_id, school: row.udise }); setShowEditModal(true); setActiveDropdown(null); }}
                         >
                           Edit
                         </button>
@@ -414,7 +414,7 @@ export default function CoordinatorsPage() {
                     style={{ width: '100%', padding: '10px', borderRadius: '8px', border: `1px solid ${fieldErrors.school ? '#EF4444' : 'var(--border-light)'}`, color: singleForm.school ? 'inherit' : 'var(--text-muted)' }}>
                     <option value="">Select School</option>
                     {schools.map(s => (
-                      <option key={s.school_id} value={s.school_id}>{s.school_name}</option>
+                      <option key={s.school_id} value={s.udise_code}>{s.school_name}</option>
                     ))}
                   </select>
                   {fieldErrors.school && <div style={{ color: '#EF4444', fontSize: '0.75rem', marginTop: '4px' }}>{fieldErrors.school}</div>}
@@ -571,7 +571,7 @@ export default function CoordinatorsPage() {
                       style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-light)' }} required>
                       <option value="">Select School</option>
                       {schools.map(s => (
-                        <option key={s.school_id} value={s.school_id}>{s.school_name}</option>
+                        <option key={s.school_id} value={s.udise_code}>{s.school_name}</option>
                       ))}
                     </select>
                   </div>
