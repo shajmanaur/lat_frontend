@@ -1,8 +1,71 @@
-import React from 'react';
+'use client';
+
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { LayoutDashboard, Users, UserCheck, FileCheck, RefreshCw, Globe, MapPin, Building, HeadphonesIcon, Box } from 'lucide-react';
+import { Home, Users, UserCheck, UserPlus, ClipboardList, HeadphonesIcon, Box, LogOut, GraduationCap, FileCheck, Settings, Globe, MapPin, Building, Activity } from 'lucide-react';
+import { usePathname } from 'next/navigation';
+import { menuApi } from '@/services/api';
+
+// Map icon strings from DB to Lucide components
+const IconMap: Record<string, React.ElementType> = {
+  Home,
+  Users,
+  UserCheck,
+  UserPlus,
+  ClipboardList,
+  GraduationCap,
+  FileCheck,
+  Settings,
+  Globe,
+  MapPin,
+  Building,
+  Activity
+};
+
+interface Menu {
+  id: number;
+  menu_name: string;
+  menu_link: string;
+  menu_icon: string;
+  menu_remarks: string; // Used as category
+  priority: number;
+}
 
 export default function Sidebar() {
+  const pathname = usePathname();
+  const [menus, setMenus] = useState<Menu[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchMenus = async () => {
+      try {
+        const result = await menuApi.getMyMenus();
+        // The backend wraps everything in { status: true, response: { status: 'success', data: [...] } }
+        if (result.status === true && result.response && result.response.data) {
+          setMenus(result.response.data);
+        } else if (result.status === 'success') {
+          // Fallback if the global interceptor wasn't applied
+          setMenus(result.data);
+        }
+      } catch (err) {
+        console.error('Failed to fetch menus:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchMenus();
+  }, []);
+
+  // Group menus by category (menu_remarks)
+  const groupedMenus = menus.reduce((acc, menu) => {
+    const category = menu.menu_remarks || 'MAIN';
+    if (!acc[category]) {
+      acc[category] = [];
+    }
+    acc[category].push(menu);
+    return acc;
+  }, {} as Record<string, Menu[]>);
+
   return (
     <aside className="sidebar">
       <div className="sidebar-logo">
@@ -14,47 +77,26 @@ export default function Sidebar() {
       </div>
       
       <nav className="sidebar-nav">
-        <div className="nav-group-title">Overview</div>
-        <Link href="/" className="nav-item active">
-          <LayoutDashboard size={18} />
-          <span>Dashboard</span>
-        </Link>
-        
-        <div className="nav-group-title">Coordinator Management</div>
-        <Link href="/coordinators" className="nav-item">
-          <Users size={18} />
-          <span>Coordinators</span>
-        </Link>
-
-        <div className="nav-group-title">Student Management</div>
-        <Link href="/students" className="nav-item">
-          <UserCheck size={18} />
-          <span>Students</span>
-        </Link>
-        
-        <div className="nav-group-title">OMR Processing</div>
-        <Link href="/omr-status" className="nav-item">
-          <FileCheck size={18} />
-          <span>OMR Entry Status</span>
-        </Link>
-        <Link href="/omr-processing" className="nav-item">
-          <RefreshCw size={18} />
-          <span>OMR Processing</span>
-        </Link>
-        
-        <div className="nav-group-title">Reports</div>
-        <Link href="/reports/national" className="nav-item">
-          <Globe size={18} />
-          <span>National Report</span>
-        </Link>
-        <Link href="/reports/region" className="nav-item">
-          <MapPin size={18} />
-          <span>Region Report</span>
-        </Link>
-        <Link href="/reports/school" className="nav-item">
-          <Building size={18} />
-          <span>School Report</span>
-        </Link>
+        {loading ? (
+          <div style={{ padding: '1rem', color: '#94A3B8', fontSize: '0.85rem' }}>Loading menus...</div>
+        ) : (
+          Object.entries(groupedMenus).map(([category, catMenus]) => (
+            <React.Fragment key={category}>
+              <div className="nav-group-title">{category}</div>
+              {catMenus.map((menu) => {
+                const IconComponent = IconMap[menu.menu_icon] || Activity;
+                const isActive = pathname === menu.menu_link;
+                
+                return (
+                  <Link href={menu.menu_link} key={menu.id} className={`nav-item ${isActive ? 'active' : ''}`}>
+                    <IconComponent size={18} />
+                    <span>{menu.menu_name}</span>
+                  </Link>
+                );
+              })}
+            </React.Fragment>
+          ))
+        )}
       </nav>
       
       <div className="sidebar-footer">
@@ -63,8 +105,21 @@ export default function Sidebar() {
             <HeadphonesIcon size={18} />
             <span>Support</span>
           </div>
-          <span>›</span>
         </Link>
+        <button 
+          className="nav-item" 
+          style={{ width: '100%', justifyContent: 'flex-start', color: '#EF4444', marginTop: '0.5rem', background: 'transparent', border: 'none', cursor: 'pointer' }} 
+          onClick={() => {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            window.location.href = '/login';
+          }}
+        >
+          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+            <LogOut size={18} />
+            <span>Sign Out</span>
+          </div>
+        </button>
       </div>
     </aside>
   );

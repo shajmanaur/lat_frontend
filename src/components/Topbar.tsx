@@ -1,48 +1,74 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Menu, Bell } from 'lucide-react';
 
 export default function Topbar() {
+  const [user, setUser] = useState<{ username: string, roleId: number } | null>(null);
+
+  useEffect(() => {
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      try {
+        setUser(JSON.parse(userStr));
+      } catch (e) { }
+    }
+  }, []);
+
+  const getRoleName = (roleId: number) => {
+    switch (roleId) {
+      case 1: return 'Superadmin';
+      case 2: return 'Admin User';
+      case 3: return 'Coordinator User';
+      case 4: return 'Teacher User';
+      case 5: return 'Student User';
+      default: return 'User';
+    }
+  };
+
+  const getInitials = (username: string) => {
+    return username.substring(0, 2).toUpperCase();
+  };
+
   return (
     <header className="topbar">
       <button className="menu-btn" style={{ color: 'var(--text-muted)' }}>
         <Menu size={24} />
       </button>
       
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-6">
         <button style={{ position: 'relative', color: 'var(--text-muted)' }}>
           <Bell size={20} />
           <span style={{
             position: 'absolute',
-            top: -5,
-            right: -5,
+            top: -2,
+            right: 0,
             background: '#EF4444',
-            color: 'white',
-            fontSize: '0.65rem',
-            padding: '2px 5px',
-            borderRadius: '10px',
-            fontWeight: 'bold',
+            width: '8px',
+            height: '8px',
+            borderRadius: '50%',
             border: '2px solid white'
-          }}>12</span>
+          }}></span>
         </button>
         
-        <div className="flex items-center gap-3" style={{ borderLeft: '1px solid var(--border-light)', paddingLeft: '1rem' }}>
+        <div className="flex items-center gap-3 cursor-pointer">
           <div style={{
-            width: '36px',
-            height: '36px',
+            width: '32px',
+            height: '32px',
             borderRadius: '50%',
-            backgroundColor: 'var(--status-blue-bg)',
+            backgroundColor: 'rgba(76, 53, 230, 0.1)',
             color: 'var(--primary-purple)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            fontWeight: 'bold',
-            fontSize: '0.875rem'
+            fontWeight: '600',
+            fontSize: '0.8rem'
           }}>
-            AD
+            {user ? getInitials(user.username) : 'CB'}
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>Admin User</span>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Super Admin</span>
+          <div className="flex items-center gap-2">
+            <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-dark)' }}>
+              {user ? getRoleName(user.roleId) : 'Coordinator User'}
+            </span>
+            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>▼</span>
           </div>
         </div>
       </div>
