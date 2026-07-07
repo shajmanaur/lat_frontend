@@ -107,7 +107,6 @@ export default function OMRPage() {
 
       await axios.post(`${apiUrl}/omr/save`, {
         student_id: activeStudent.student_id,
-        teacher_id: 0, // Backend will use req.user.sub
         responses,
         status
       }, {
@@ -167,7 +166,7 @@ export default function OMRPage() {
           <div className="flex gap-8 text-sm">
             <div>
               <div className="text-muted text-xs">Grade</div>
-              <div className="font-semibold">{activeStudent?.grade}</div>
+              <div className="font-semibold">{typeof activeStudent?.grade === 'object' ? activeStudent?.grade?.grade_name : activeStudent?.grade}</div>
             </div>
             <div>
               <div className="text-muted text-xs">Section</div>
@@ -308,7 +307,8 @@ export default function OMRPage() {
 
   const filteredStudents = students.filter(s => {
     const matchesSearch = !searchQuery || s.full_name.toLowerCase().includes(searchQuery.toLowerCase()) || (s.apaar_id && s.apaar_id.includes(searchQuery));
-    const matchesGrade = gradeFilter === 'All Grades' || s.grade === gradeFilter;
+    const gradeName = typeof s.grade === 'object' ? s.grade?.grade_name : s.grade;
+    const matchesGrade = gradeFilter === 'All Grades' || gradeName === gradeFilter;
     const matchesSection = sectionFilter === 'All Sections' || s.section === sectionFilter;
     return matchesSearch && matchesGrade && matchesSection;
   });
@@ -318,7 +318,7 @@ export default function OMRPage() {
   const inProgressCount = filteredStudents.filter(s => s.omr_status === 'In Progress').length;
   const pendingCount = filteredStudents.filter(s => s.omr_status === 'Pending').length;
 
-  const uniqueGrades = Array.from(new Set(students.map(s => s.grade))).filter(Boolean).sort();
+  const uniqueGrades = Array.from(new Set(students.map(s => typeof s.grade === 'object' ? s.grade?.grade_name : s.grade))).filter(Boolean).sort();
   const uniqueSections = Array.from(new Set(students.map(s => s.section))).filter(Boolean).sort();
 
   // --- LIST VIEW ---

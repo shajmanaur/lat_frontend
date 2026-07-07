@@ -31,7 +31,7 @@ export default function StudentList() {
     full_name: '',
     apaar_id: '',
     gender: '',
-    grade: '',
+    grade_id: '',
     section: ''
   });
   const [submitting, setSubmitting] = useState(false);
@@ -112,7 +112,7 @@ export default function StudentList() {
   };
 
   const handleAddOrEditStudent = async () => {
-    if (!formData.full_name || !formData.gender || !formData.grade || !formData.section) {
+    if (!formData.full_name || !formData.gender || !formData.grade_id || !formData.section) {
       toast.error('Please fill all required fields');
       return;
     }
@@ -136,7 +136,7 @@ export default function StudentList() {
       }
 
       setShowAddModal(false);
-      setFormData({ student_id: null, full_name: '', apaar_id: '', gender: '', grade: '', section: '' });
+      setFormData({ student_id: null, full_name: '', apaar_id: '', gender: '', grade_id: '', section: '' });
       fetchStudents();
     } catch (err: any) {
       toast.error(err.response?.data?.message || err.response?.data?.error || 'Failed to save student');
@@ -151,7 +151,7 @@ export default function StudentList() {
       full_name: student.full_name,
       apaar_id: student.apaar_id || '',
       gender: student.gender === 'm' ? 'Male' : student.gender === 'f' ? 'Female' : 'Other',
-      grade: student.grade,
+      grade_id: student.grade?.grade_id || student.grade_id || '',
       section: student.section
     });
     setShowAddModal(true);
@@ -159,7 +159,8 @@ export default function StudentList() {
 
   const filteredStudents = students.filter(s => {
     const matchesSearch = !searchQuery || s.full_name.toLowerCase().includes(searchQuery.toLowerCase()) || (s.apaar_id && s.apaar_id.includes(searchQuery));
-    const matchesGrade = gradeFilter === 'All Grades' || s.grade === gradeFilter;
+    const gradeName = typeof s.grade === 'object' ? s.grade?.grade_name : s.grade;
+    const matchesGrade = gradeFilter === 'All Grades' || gradeName === gradeFilter;
     const matchesSection = sectionFilter === 'All Sections' || s.section === sectionFilter;
     return matchesSearch && matchesGrade && matchesSection;
   });
@@ -180,7 +181,7 @@ export default function StudentList() {
             Bulk Upload
           </button>
           <button onClick={() => {
-            setFormData({ student_id: null, full_name: '', apaar_id: '', gender: '', grade: '', section: '' });
+            setFormData({ student_id: null, full_name: '', apaar_id: '', gender: '', grade_id: '', section: '' });
             setShowAddModal(true);
           }} className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px' }}>
             <Plus size={16} />
@@ -257,7 +258,7 @@ export default function StudentList() {
                         {s.gender === 'm' ? 'Male' : s.gender === 'f' ? 'Female' : 'Other'}
                       </span>
                     </td>
-                    <td style={{ padding: '20px 12px', color: 'var(--text-muted)' }}>{s.grade}</td>
+                    <td style={{ padding: '20px 12px', color: 'var(--text-muted)' }}>{typeof s.grade === 'object' ? s.grade?.grade_name : s.grade}</td>
                     <td style={{ padding: '20px 12px', color: 'var(--text-muted)' }}>{s.section}</td>
                     <td style={{ padding: '20px 12px', textAlign: 'center' }}>
                       <div className="flex items-center justify-center gap-4 text-muted">
@@ -313,9 +314,9 @@ export default function StudentList() {
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-dark)', marginBottom: '8px' }}>Grade *</label>
-                <select value={formData.grade} onChange={e => setFormData({...formData, grade: e.target.value})} style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid var(--border-light)', fontSize: '0.875rem', backgroundColor: 'white' }}>
+                <select value={formData.grade_id} onChange={e => setFormData({...formData, grade_id: e.target.value})} style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid var(--border-light)', fontSize: '0.875rem', backgroundColor: 'white' }}>
                   <option value="">Select Grade</option>
-                  {gradeOptions.map(g => <option key={g.grade_id} value={g.grade_name}>{g.grade_name}</option>)}
+                  {gradeOptions.map(g => <option key={g.grade_id} value={g.grade_id}>{g.grade_name}</option>)}
                 </select>
               </div>
               <div>
