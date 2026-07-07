@@ -34,6 +34,54 @@ export default function TeacherList() {
     designation: ''
   });
 
+  useEffect(() => {
+    fetchTeachers();
+    fetchGrades();
+  }, []);
+
+  useEffect(() => {
+    if (gradeFilter !== 'All Grades') {
+      fetchSections(gradeFilter);
+    } else {
+      setSectionOptions([]);
+      setSectionFilter('All Sections');
+    }
+  }, [gradeFilter]);
+
+  const fetchGrades = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api/v1';
+      const res = await axios.get(`${apiUrl}/teachers/meta/grades`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.data?.response?.data) {
+        setGradeOptions(res.data.response.data);
+      } else if (res.data?.data) {
+        setGradeOptions(res.data.data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch grades', err);
+    }
+  };
+
+  const fetchSections = async (grade: string) => {
+    try {
+      const token = localStorage.getItem('token');
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api/v1';
+      const res = await axios.get(`${apiUrl}/teachers/meta/sections?grade=${grade}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.data?.response?.data) {
+        setSectionOptions(res.data.response.data);
+      } else if (res.data?.data) {
+        setSectionOptions(res.data.data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch sections', err);
+    }
+  };
+
   const fetchTeachers = async () => {
     try {
       const token = localStorage.getItem('token');

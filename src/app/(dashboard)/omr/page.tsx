@@ -1,20 +1,37 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Users, FileCheck, Clock, UserX, Search, Filter, RotateCcw, ChevronLeft, Save, ArrowRight, UserPlus, FileText } from 'lucide-react';
-
-const mockStudents = [
-  { id: 1, name: 'Aman Sharma', aadhar: 'AF345678901234', gender: 'Male', status: 'Completed', lastSaved: '20 May 2025 10:30 AM', action: 'View / Edit' },
-  { id: 2, name: 'Siya Verma', aadhar: 'AF345678901235', gender: 'Female', status: 'Completed', lastSaved: '20 May 2025 10:25 AM', action: 'View / Edit' },
-  { id: 3, name: 'Rohan Mehta', aadhar: 'AF345678901236', gender: 'Male', status: 'In Progress', lastSaved: '20 May 2025 10:15 AM', action: 'Continue' },
-  { id: 4, name: 'Neha Patel', aadhar: 'AF345678901237', gender: 'Female', status: 'Pending', lastSaved: '-', action: 'Start Entry' },
-  { id: 5, name: 'Aditya Singh', aadhar: 'AF345678901238', gender: 'Male', status: 'Not Uploaded', lastSaved: '-', action: 'Start Entry' },
-  { id: 6, name: 'Ananya Gupta', aadhar: 'AF345678901239', gender: 'Female', status: 'Absent', lastSaved: '20 May 2025 10:00 AM', action: 'View' },
-  { id: 7, name: 'Vihaan Kumar', aadhar: 'AF345678901240', gender: 'Male', status: 'Pending', lastSaved: '-', action: 'Start Entry' },
-];
+import axios from 'axios';
+import { toast } from 'react-hot-toast';
 
 export default function OMRPage() {
   const [view, setView] = useState<'list' | 'entry'>('list');
+  const [students, setStudents] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [activeStudent, setActiveStudent] = useState<any>(null);
+  const [questions, setQuestions] = useState<any[]>([]);
+  const [answers, setAnswers] = useState<Record<number, string>>({});
+  const [isSaving, setIsSaving] = useState(false);
+  
+  const fetchStudents = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api/v1';
+      const res = await axios.get(`${apiUrl}/omr/students`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setStudents(res.data?.data || []);
+    } catch (err) {
+      console.error('Failed to load students', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchStudents();
+  }, []);
 
   const renderStatus = (status: string) => {
     switch(status) {
@@ -27,14 +44,91 @@ export default function OMRPage() {
     }
   };
 
-  const renderActionButton = (action: string) => {
-    if (action === 'Start Entry' || action === 'Continue') {
-      return <button onClick={() => setView('entry')} className="btn btn-primary w-full py-1 text-xs">{action}</button>;
+  const renderActionButton = (status: string, student: any) => {
+    const isStart = status === 'Pending' || status === 'Not Uploaded';
+    const actionText = isStart ? 'Start Entry' : (status === 'In Progress' ? 'Continue' : 'View / Edit');
+    const handleClick = () => startOMREntry(student);
+
+    if (isStart || status === 'In Progress') {
+      return <button onClick={handleClick} className="btn btn-primary w-full py-1 text-xs">{actionText}</button>;
     }
-    return <button onClick={() => setView('entry')} className="btn btn-outline text-primary-purple border-primary-purple w-full py-1 text-xs bg-purple-50 hover:bg-purple-100">{action}</button>;
+    return <button onClick={handleClick} className="btn btn-outline text-primary-purple border-primary-purple w-full py-1 text-xs bg-purple-50 hover:bg-purple-100">{actionText}</button>;
   };
 
-  const [answers, setAnswers] = useState<Record<number, string>>({});
+  const startOMREntry = async (student: any) => {
+    setActiveStudent(student);
+    setView('entry');
+    setQuestions([]);
+    setAnswers({});
+    
+    try {
+      const token = localStorage.getItem('token');
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api/v1';
+      
+      // Fetch questions
+      const qRes = await axios.get(`${apiUrl}/omr/questions/${student.student_id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setQuestions(qRes.data?.data || []);
+
+      // Fetch existing responses
+      const rRes = await axios.get(`${apiUrl}/omr/responses/${student.student_id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const existing = rRes.data?.data || [];
+      const loadedAnswers: Record<number, string> = {};
+      existing.forEach((resp: any, index: number) => {
+        // Find question index
+        const qIndex = (qRes.data?.data || []).findIndex((q: any) => q.id === resp.question_id);
+        if (qIndex !== -1 && resp.selected_option) {
+          loadedAnswers[qIndex] = resp.selected_option;
+        }
+      });
+      setAnswers(loadedAnswers);
+    } catch (err) {
+      toast.error('Failed to load OMR details');
+    }
+  };
+
+  const handleSaveOMR = async (status: number) => {
+    if (!activeStudent || questions.length === 0) return;
+    setIsSaving(true);
+    try {
+      const token = localStorage.getItem('token');
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api/v1';
+      
+      const responses = Object.keys(answers).map(qIndexStr => {
+        const qIndex = parseInt(qIndexStr);
+        return {
+          question_id: questions[qIndex].id,
+          selected_option: answers[qIndex]
+        };
+      });
+
+      await axios.post(`${apiUrl}/omr/save`, {
+        student_id: activeStudent.student_id,
+        teacher_id: 0, // Backend will use req.user.sub
+        responses,
+        status
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      toast.success(status === 1 ? 'Responses Submitted!' : 'Draft Saved!');
+      
+      if (status === 1) {
+        // Go back to list and refresh
+        setView('list');
+        fetchStudents();
+      }
+    } catch (err) {
+      toast.error('Failed to save responses');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+
 
   if (view === 'entry') {
     return (
@@ -63,21 +157,21 @@ export default function OMRPage() {
         <div className="card flex items-center justify-between bg-white border border-border-light shadow-sm">
           <div className="flex items-center gap-4">
             <div className="w-10 h-10 rounded-full bg-purple-100 text-primary-purple flex items-center justify-center font-bold text-lg">
-              AS
+              {activeStudent?.full_name ? activeStudent.full_name.split(' ').map((n: string) => n[0]).join('') : '?'}
             </div>
             <div>
-              <div className="font-bold">Aman Sharma</div>
-              <div className="text-xs text-muted">UPMA ID: UP6802090004</div>
+              <div className="font-bold">{activeStudent?.full_name}</div>
+              <div className="text-xs text-muted">APAAR ID: {activeStudent?.apaar_id || 'N/A'}</div>
             </div>
           </div>
           <div className="flex gap-8 text-sm">
             <div>
               <div className="text-muted text-xs">Grade</div>
-              <div className="font-semibold">5</div>
+              <div className="font-semibold">{activeStudent?.grade}</div>
             </div>
             <div>
               <div className="text-muted text-xs">Section</div>
-              <div className="font-semibold">A</div>
+              <div className="font-semibold">{activeStudent?.section}</div>
             </div>
             <div>
               <div className="text-muted text-xs">Test/Exam</div>
@@ -85,14 +179,14 @@ export default function OMRPage() {
             </div>
             <div>
               <div className="text-muted text-xs">Total Questions</div>
-              <div className="font-semibold">45</div>
+              <div className="font-semibold">{questions.length}</div>
             </div>
             <div>
               <div className="text-muted text-xs mb-1">Progress</div>
               <div className="flex items-center gap-3">
-                <span className="font-semibold">{Object.keys(answers).length} / 45</span>
+                <span className="font-semibold">{Object.keys(answers).length} / {questions.length || 1}</span>
                 <div className="w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
-                  <div className="h-full bg-primary-purple" style={{ width: `${(Object.keys(answers).length / 45) * 100}%` }}></div>
+                  <div className="h-full bg-primary-purple" style={{ width: `${(Object.keys(answers).length / (questions.length || 1)) * 100}%` }}></div>
                 </div>
               </div>
             </div>
@@ -129,9 +223,9 @@ export default function OMRPage() {
         {/* Grid of Bubbles */}
         <div className="card" style={{ backgroundColor: 'white', padding: '24px' }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '16px 24px' }}>
-            {Array.from({ length: 24 }).map((_, i) => {
+            {questions.map((q, i) => {
               // Highlight the next unanswered question
-              const nextUnanswered = Array.from({length: 24}).findIndex((_, idx) => !answers[idx]);
+              const nextUnanswered = Array.from({length: questions.length}).findIndex((_, idx) => !answers[idx]);
               const isHighlighted = i === nextUnanswered;
               
               return (
@@ -194,19 +288,38 @@ export default function OMRPage() {
 
         {/* Footer Actions */}
         <div className="flex items-center justify-between border-t border-border-light pt-6 mt-2">
-          <button className="btn btn-outline bg-white text-muted">
-            <ChevronLeft size={16} /> Previous Student
+          <button onClick={() => { setView('list'); fetchStudents(); }} className="btn btn-outline bg-white text-muted">
+            <ChevronLeft size={16} /> Exit
           </button>
-          <button className="btn btn-outline bg-white flex items-center gap-2 text-text-dark">
-            <Save size={16} /> Save Draft
+          <button onClick={() => handleSaveOMR(0)} disabled={isSaving} className="btn btn-outline bg-white flex items-center gap-2 text-text-dark">
+            <Save size={16} /> {isSaving ? 'Saving...' : 'Save Draft'}
           </button>
-          <button className="btn btn-primary flex items-center gap-2">
-            Save & Next Student <ArrowRight size={16} />
+          <button onClick={() => handleSaveOMR(1)} disabled={isSaving} className="btn btn-primary flex items-center gap-2">
+            {isSaving ? 'Submitting...' : 'Save & Submit'} <ArrowRight size={16} />
           </button>
         </div>
       </div>
     );
   }
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const [gradeFilter, setGradeFilter] = useState('All Grades');
+  const [sectionFilter, setSectionFilter] = useState('All Sections');
+
+  const filteredStudents = students.filter(s => {
+    const matchesSearch = !searchQuery || s.full_name.toLowerCase().includes(searchQuery.toLowerCase()) || (s.apaar_id && s.apaar_id.includes(searchQuery));
+    const matchesGrade = gradeFilter === 'All Grades' || s.grade === gradeFilter;
+    const matchesSection = sectionFilter === 'All Sections' || s.section === sectionFilter;
+    return matchesSearch && matchesGrade && matchesSection;
+  });
+
+  const totalStudents = filteredStudents.length;
+  const completedCount = filteredStudents.filter(s => s.omr_status === 'Completed').length;
+  const inProgressCount = filteredStudents.filter(s => s.omr_status === 'In Progress').length;
+  const pendingCount = filteredStudents.filter(s => s.omr_status === 'Pending').length;
+
+  const uniqueGrades = Array.from(new Set(students.map(s => s.grade))).filter(Boolean).sort();
+  const uniqueSections = Array.from(new Set(students.map(s => s.section))).filter(Boolean).sort();
 
   // --- LIST VIEW ---
   return (
@@ -235,16 +348,30 @@ export default function OMRPage() {
       {/* Filters Area */}
       <div className="card">
         <div className="flex gap-4 mb-6 flex-wrap">
-          <div className="flex-1 min-w-[200px]">
+          <div className="flex-1 min-w-[150px]">
             <label className="text-xs text-muted mb-1 block">Grade</label>
-            <select className="w-full p-2 rounded-md border border-border-light text-sm bg-white">
-              <option>Grade 5</option>
+            <select 
+              className="w-full p-2 rounded-md border border-border-light text-sm bg-white"
+              value={gradeFilter}
+              onChange={e => setGradeFilter(e.target.value)}
+            >
+              <option value="All Grades">All Grades</option>
+              <option value="Grade 3">Grade 3</option>
+              <option value="Grade 6">Grade 6</option>
+              <option value="Grade 9">Grade 9</option>
             </select>
           </div>
           <div className="flex-1 min-w-[100px]">
             <label className="text-xs text-muted mb-1 block">Section</label>
-            <select className="w-full p-2 rounded-md border border-border-light text-sm bg-white">
-              <option>A</option>
+            <select 
+              className="w-full p-2 rounded-md border border-border-light text-sm bg-white"
+              value={sectionFilter}
+              onChange={e => setSectionFilter(e.target.value)}
+            >
+              <option value="All Sections">All Sections</option>
+              {uniqueSections.map(s => (
+                <option key={s} value={s}>{s}</option>
+              ))}
             </select>
           </div>
           <div className="flex-1 min-w-[200px]">
@@ -265,6 +392,8 @@ export default function OMRPage() {
               <Search size={16} className="text-muted absolute left-3 top-2.5" />
               <input 
                 type="text" 
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
                 placeholder="Search by student name or roll no." 
                 className="w-full p-2 pl-9 rounded-md border border-border-light text-sm" 
               />
@@ -283,35 +412,28 @@ export default function OMRPage() {
             <div className="bg-purple-50 text-primary-purple p-2 rounded-full"><Users size={18} /></div>
             <div>
               <div className="text-xs text-muted">Total Students</div>
-              <div className="font-bold text-lg">45</div>
+              <div className="font-bold text-lg">{totalStudents}</div>
             </div>
           </div>
           <div className="border border-green-200 bg-green-50/30 rounded-lg p-3 flex items-center gap-3">
             <div className="bg-green-100 text-green-600 p-2 rounded-full"><FileCheck size={18} /></div>
             <div>
               <div className="text-xs text-green-700">OMR Completed</div>
-              <div className="font-bold text-lg text-green-700">28 <span className="text-xs font-normal opacity-70">62.22%</span></div>
+              <div className="font-bold text-lg text-green-700">{completedCount} <span className="text-xs font-normal opacity-70">{totalStudents ? ((completedCount/totalStudents)*100).toFixed(2) : 0}%</span></div>
             </div>
           </div>
           <div className="border border-border-light rounded-lg p-3 flex items-center gap-3">
             <div className="bg-amber-50 text-amber-500 p-2 rounded-full"><Clock size={18} /></div>
             <div>
-              <div className="text-xs text-muted">Pending</div>
-              <div className="font-bold text-lg">12 <span className="text-xs font-normal text-muted">26.67%</span></div>
+              <div className="text-xs text-muted">In Progress</div>
+              <div className="font-bold text-lg">{inProgressCount} <span className="text-xs font-normal text-muted">{totalStudents ? ((inProgressCount/totalStudents)*100).toFixed(2) : 0}%</span></div>
             </div>
           </div>
           <div className="border border-border-light rounded-lg p-3 flex items-center gap-3">
             <div className="bg-red-50 text-red-500 p-2 rounded-full"><UserX size={18} /></div>
             <div>
-              <div className="text-xs text-muted">Not Uploaded</div>
-              <div className="font-bold text-lg">3 <span className="text-xs font-normal text-muted">6.67%</span></div>
-            </div>
-          </div>
-          <div className="border border-border-light rounded-lg p-3 flex items-center gap-3">
-            <div className="bg-gray-100 text-gray-500 p-2 rounded-full"><Users size={18} /></div>
-            <div>
-              <div className="text-xs text-muted">Absent</div>
-              <div className="font-bold text-lg">2 <span className="text-xs font-normal text-muted">4.44%</span></div>
+              <div className="text-xs text-muted">Pending</div>
+              <div className="font-bold text-lg">{pendingCount} <span className="text-xs font-normal text-muted">{totalStudents ? ((pendingCount/totalStudents)*100).toFixed(2) : 0}%</span></div>
             </div>
           </div>
         </div>
@@ -331,23 +453,27 @@ export default function OMRPage() {
               </tr>
             </thead>
             <tbody>
-              {mockStudents.map((s, idx) => (
-                <tr key={s.id} style={{ borderBottom: '1px solid var(--border-light)' }}>
+              {loading ? (
+                <tr><td colSpan={7} style={{ textAlign: 'center', padding: '20px' }}>Loading students...</td></tr>
+              ) : filteredStudents.length === 0 ? (
+                <tr><td colSpan={7} style={{ textAlign: 'center', padding: '20px' }}>No students found</td></tr>
+              ) : filteredStudents.map((s, idx) => (
+                <tr key={s.student_id} style={{ borderBottom: '1px solid var(--border-light)' }}>
                   <td style={{ padding: '16px 12px' }}>{idx + 1}</td>
                   <td style={{ padding: '16px 12px', fontWeight: 600 }}>
                     <div className="flex items-center gap-2">
                       <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'rgba(76,53,230,0.1)', color: '#4C35E6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 'bold' }}>
-                        {s.name.split(' ').map(n => n[0]).join('')}
+                        {s.full_name ? s.full_name.split(' ').map((n: string) => n[0]).join('') : '?'}
                       </div>
-                      {s.name}
+                      {s.full_name}
                     </div>
                   </td>
-                  <td style={{ padding: '16px 12px', color: 'var(--text-muted)' }}>{s.aadhar}</td>
-                  <td style={{ padding: '16px 12px', color: 'var(--text-muted)' }}>{s.gender}</td>
-                  <td style={{ padding: '16px 12px' }}>{renderStatus(s.status)}</td>
-                  <td style={{ padding: '16px 12px', color: 'var(--text-muted)' }}>{s.lastSaved}</td>
+                  <td style={{ padding: '16px 12px', color: 'var(--text-muted)' }}>{s.apaar_id || '-'}</td>
+                  <td style={{ padding: '16px 12px', color: 'var(--text-muted)' }}>{s.gender === 'm' ? 'Male' : s.gender === 'f' ? 'Female' : 'Other'}</td>
+                  <td style={{ padding: '16px 12px' }}>{renderStatus(s.omr_status)}</td>
+                  <td style={{ padding: '16px 12px', color: 'var(--text-muted)' }}>{s.last_saved ? new Date(s.last_saved).toLocaleString() : '-'}</td>
                   <td style={{ padding: '16px 12px', textAlign: 'center', width: '120px' }}>
-                    {renderActionButton(s.action)}
+                    {renderActionButton(s.omr_status, s)}
                   </td>
                 </tr>
               ))}
