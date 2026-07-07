@@ -77,6 +77,7 @@ export const coordinatorsApi = {
 };
 
 export const omrApi = {
+  getAssessments: () => api.get('/omr/assessments').then(res => res.data),
   getQuestions: (grade: string, subject: string) => api.get(`/omr/questions?grade=${grade}&subject=${subject}`).then(res => res.data),
   saveResponses: (payload: {
     student_id: number;
@@ -84,4 +85,15 @@ export const omrApi = {
     responses: { question_id: number; selected_option: string }[];
     status: number;
   }) => api.post('/omr/save', payload).then(res => res.data),
+  getEntryStatus: async (udiseCode?: string, regionId?: string) => {
+    let url = '/omr/entry-status';
+    const params = new URLSearchParams();
+    if (udiseCode) params.append('udise', udiseCode);
+    if (regionId) params.append('regionId', regionId);
+    if (params.toString()) {
+      url += `?${params.toString()}`;
+    }
+    const res = await api.get(url);
+    return res.data;
+  }
 };

@@ -1,7 +1,7 @@
 'use client';
 import React, { useState } from 'react';
-import { 
-  Filter, RotateCw, CheckCircle2, AlertCircle, Clock, 
+import {
+  Filter, RotateCw, CheckCircle2, AlertCircle, Clock,
   Users, FileText, ChevronRight, X, Play, FileCheck, HelpCircle, FileSearch, ArrowRight
 } from 'lucide-react';
 import Link from 'next/link';
@@ -82,8 +82,8 @@ export default function OMREvaluationPage() {
           ))}
         </div>
         <div className="flex gap-3 ml-4">
-           <button onClick={handleClearFilters} className="btn btn-outline" style={{ padding: '8px 16px', background: 'white' }}>Clear</button>
-           <button onClick={handleApplyFilters} className="btn btn-primary" style={{ padding: '8px 16px' }}><Filter size={16} /> Apply Filters</button>
+          <button onClick={handleClearFilters} className="btn btn-outline" style={{ padding: '8px 16px', background: 'white' }}>Clear</button>
+          <button onClick={handleApplyFilters} className="btn btn-primary" style={{ padding: '8px 16px' }}><Filter size={16} /> Apply Filters</button>
         </div>
       </div>
 
@@ -97,7 +97,7 @@ export default function OMREvaluationPage() {
           </div>
           <h2 style={{ fontSize: '1.25rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: '8px' }}>No evaluation data found</h2>
           <p className="text-muted text-sm text-center max-w-md mb-6">
-            There are no evaluation records to display.<br/>
+            There are no evaluation records to display.<br />
             Please apply filters or ensure OMR entries are completed before running evaluation.
           </p>
           <Link href="/omr-entry-status" className="btn btn-primary" style={{ padding: '10px 24px' }}>
@@ -119,7 +119,7 @@ export default function OMREvaluationPage() {
                 <div className="text-[10px] text-muted">100%</div>
               </div>
             </div>
-            
+
             <div className="card flex items-center gap-4 py-4 px-4 border-l-4" style={{ borderLeftColor: 'var(--status-blue)' }}>
               <div style={{ padding: '10px', background: '#EFF6FF', color: 'var(--status-blue)', borderRadius: '50%' }}>
                 <FileText size={20} />
@@ -170,7 +170,7 @@ export default function OMREvaluationPage() {
             <div style={{ padding: '1.25rem', borderBottom: '1px solid var(--border-light)' }}>
               <h3 style={{ fontSize: '1.1rem' }}>Schools Evaluation Status</h3>
             </div>
-            
+
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.8rem' }}>
                 <thead>
@@ -236,7 +236,7 @@ export default function OMREvaluationPage() {
               <div className="flex justify-between items-start relative px-4">
                 {/* Connecting Line */}
                 <div style={{ position: 'absolute', top: '16px', left: '10%', right: '10%', height: '2px', background: '#E2E8F0', zIndex: 0 }}></div>
-                
+
                 {[
                   { title: '1. OMR Entry Completed', desc: 'Responses entered by coordinators', status: 'done' },
                   { title: '2. Answer Key Uploaded', desc: 'Answer key is available', status: 'done' },
@@ -245,15 +245,15 @@ export default function OMREvaluationPage() {
                   { title: '5. Reports Generated', desc: 'Reports are generated', status: 'pending' }
                 ].map((step, i) => (
                   <div key={i} className="flex flex-col items-center text-center relative z-10" style={{ width: '18%' }}>
-                    <div style={{ 
+                    <div style={{
                       width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '8px',
                       background: step.status === 'done' ? 'var(--status-green)' : step.status === 'active' ? 'var(--primary-purple)' : '#F1F5F9',
                       color: step.status === 'pending' ? '#94A3B8' : 'white',
                       border: step.status === 'pending' ? '1px solid #CBD5E1' : 'none'
                     }}>
-                      {step.status === 'done' ? <CheckCircle2 size={16} /> : 
-                       step.status === 'active' ? <RotateCw size={16} /> : 
-                       <Clock size={16} />}
+                      {step.status === 'done' ? <CheckCircle2 size={16} /> :
+                        step.status === 'active' ? <RotateCw size={16} /> :
+                          <Clock size={16} />}
                     </div>
                     <div className="text-[11px] font-semibold mb-1 leading-tight">{step.title}</div>
                     <div className="text-[9px] text-muted leading-tight">{step.desc}</div>
@@ -262,16 +262,16 @@ export default function OMREvaluationPage() {
               </div>
             </div>
             <div className="card bg-[#F8FAFC] border border-[#E2E8F0]">
-               <div className="flex gap-2 items-center mb-3">
-                 <HelpCircle size={16} color="var(--primary-purple)" />
-                 <h3 style={{ fontSize: '1rem' }}>Important Notes</h3>
-               </div>
-               <ul className="text-xs text-muted space-y-2 mb-4">
-                 <li className="flex gap-2 items-start"><CheckCircle2 size={14} color="var(--status-green)" className="mt-[2px] flex-shrink-0" /> Ensure OMR entries are 100% complete.</li>
-                 <li className="flex gap-2 items-start"><CheckCircle2 size={14} color="var(--status-green)" className="mt-[2px] flex-shrink-0" /> Answer Key and Metadata must be uploaded.</li>
-                 <li className="flex gap-2 items-start"><CheckCircle2 size={14} color="var(--status-green)" className="mt-[2px] flex-shrink-0" /> Evaluation cannot be run if there are validation errors.</li>
-               </ul>
-               <Link href="#" className="text-xs text-[var(--primary-purple)] hover:underline font-medium">View Help Guide ↗</Link>
+              <div className="flex gap-2 items-center mb-3">
+                <HelpCircle size={16} color="var(--primary-purple)" />
+                <h3 style={{ fontSize: '1rem' }}>Important Notes</h3>
+              </div>
+              <ul className="text-xs text-muted space-y-2 mb-4">
+                <li className="flex gap-2 items-start"><CheckCircle2 size={14} color="var(--status-green)" className="mt-[2px] flex-shrink-0" /> Ensure OMR entries are 100% complete.</li>
+                <li className="flex gap-2 items-start"><CheckCircle2 size={14} color="var(--status-green)" className="mt-[2px] flex-shrink-0" /> Answer Key and Metadata must be uploaded.</li>
+                <li className="flex gap-2 items-start"><CheckCircle2 size={14} color="var(--status-green)" className="mt-[2px] flex-shrink-0" /> Evaluation cannot be run if there are validation errors.</li>
+              </ul>
+              <Link href="#" className="text-xs text-[var(--primary-purple)] hover:underline font-medium">View Help Guide ↗</Link>
             </div>
           </div>
         </>
@@ -296,8 +296,8 @@ export default function OMREvaluationPage() {
             {/* Tabs */}
             <div className="flex px-6 border-b border-gray-200 mt-2">
               {['Overview', 'Validation', 'History'].map(tab => (
-                <button 
-                  key={tab} 
+                <button
+                  key={tab}
                   onClick={() => setActiveTab(tab)}
                   className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === tab ? 'border-[var(--primary-purple)] text-[var(--primary-purple)]' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
                 >

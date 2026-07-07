@@ -542,9 +542,13 @@ export default function CoordinatorsPage() {
                   <div style={{ fontWeight: 600 }}>Download Template</div>
                   <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '4px' }}>Download the Excel template, fill in the required information and upload your file.</div>
                 </div>
-                <button type="button" style={{ padding: '8px 16px', background: 'white', border: '1px solid var(--border-light)', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 500, cursor: 'pointer' }}>
+                <a 
+                  href={`${(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api/v1').replace('/api/v1', '')}/Coordinator_Template.xlsx`} 
+                  download 
+                  style={{ padding: '8px 16px', background: 'white', border: '1px solid var(--border-light)', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 500, cursor: 'pointer', textDecoration: 'none', color: 'inherit' }}
+                >
                   Download <Download size={14} />
-                </button>
+                </a>
               </div>
 
               {/* Step 2 */}
