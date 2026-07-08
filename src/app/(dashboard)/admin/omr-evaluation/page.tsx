@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { ShimmerTable, ShimmerCard } from '@/components/ui/Shimmer';
+import { omrApi } from '@/services/api';
 
 export default function OMREvaluationPage() {
   const [loading, setLoading] = useState(true);
@@ -18,17 +19,44 @@ export default function OMREvaluationPage() {
   const [isFiltered, setIsFiltered] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('Overview');
+  const [evalData, setEvalData] = React.useState([]);
 
-  const tableData = [
-    { id: 1, region: 'North Region', school: 'Kendriya Vidyalaya No. 1', udise: '12345678901', coordinator: 'Amit Verma', students: '1,256', completed: '1,256 (100%)', status: 'Completed', updated: '20 May 2025, 10:30 AM', action: 'View Details' },
-    { id: 2, region: 'North Region', school: 'Kendriya Vidyalaya No. 2', udise: '12345678902', coordinator: 'Sunita Sharma', students: '1,089', completed: '1,089 (100%)', status: 'Completed', updated: '20 May 2025, 09:15 AM', action: 'View Details' },
-    { id: 3, region: 'East Region', school: 'Kendriya Vidyalaya No. 3', udise: '12345678903', coordinator: 'Vikram Singh', students: '1,542', completed: '1,542 (100%)', status: 'Completed', updated: '19 May 2025, 04:45 PM', action: 'View Details' },
-    { id: 4, region: 'West Region', school: 'Kendriya Vidyalaya No. 4', udise: '12345678904', coordinator: 'Neha Gupta', students: '980', completed: '860 (87.76%)', status: 'Pending', updated: '-', action: 'Run Evaluation' },
-    { id: 5, region: 'South Region', school: 'Kendriya Vidyalaya No. 5', udise: '12345678905', coordinator: 'Pooja Das', students: '1,321', completed: '1,200 (90.84%)', status: 'Pending', updated: '-', action: 'Run Evaluation' },
-    { id: 6, region: 'Central Region', school: 'Kendriya Vidyalaya No. 6', udise: '12345678906', coordinator: 'Manoj Tiwari', students: '1,015', completed: '980 (96.55%)', status: 'In Progress', updated: '20 May 2025, 11:20 AM', action: 'View Progress' },
-    { id: 7, region: 'East Region', school: 'Kendriya Vidyalaya No. 7', udise: '12345678907', coordinator: 'Anita Patil', students: '1,233', completed: '1,233 (100%)', status: 'Completed', updated: '18 May 2025, 10:05 AM', action: 'View Details' },
-    { id: 8, region: 'North Region', school: 'Kendriya Vidyalaya No. 8', udise: '12345678908', coordinator: 'Rajesh Kumar', students: '886', completed: '784 (88.52%)', status: 'Pending', updated: '-', action: 'Run Evaluation' },
-  ];
+  // Fetch evaluation status on mount
+  React.useEffect(() => {
+    const fetchEval = async () => {
+      try {
+        const res = await omrApi.getEvaluationStatus();
+        if (res && res.data) {
+          setEvalData(res.data);
+        }
+      } catch (e) {
+        console.error('Failed to fetch evaluation status', e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchEval();
+  }, []);
+
+  // Derive stats from evalData
+  const totalStudents = evalData.reduce((sum, r) => sum + (Number(r.expected) || 0), 0);
+  const completed = evalData.reduce((sum, r) => sum + (Number(r.completed) || 0), 0);
+  const pending = evalData.reduce((sum, r) => sum + (Number(r.notStarted) || 0), 0);
+  const evaluated = completed; // Assuming evaluated equals completed
+  const errors = 0; // No error data from API currently
+
+  const tableData = evalData.map((row, idx) => ({
+    id: idx + 1,
+    region: row.regionName || row.region || '-',
+    school: row.school || '-',
+    udise: row.udise || row.udiseCode || '-',
+    coordinator: row.coordinator || '-',
+    students: row.expected?.toString() ?? '-',
+    completed: `${row.completed ?? '-'} (${row.completion || '-'})`,
+    status: row.status ?? '-',
+    updated: row.updated ?? '-',
+    action: row.status === 'Pending' ? 'Run Evaluation' : row.status === 'Completed' ? 'View Details' : 'View Progress',
+  }));
 
   const handleApplyFilters = () => setIsFiltered(true);
   const handleClearFilters = () => setIsFiltered(false);
