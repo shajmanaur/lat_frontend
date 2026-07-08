@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import AdminDashboard from '@/components/dashboards/AdminDashboard';
 import CoordinatorDashboard from '@/components/dashboards/CoordinatorDashboard';
+import TeacherDashboard from '@/components/dashboards/TeacherDashboard';
 
 export default function DashboardPage() {
   const [roleId, setRoleId] = useState<number | null>(null);
@@ -29,6 +30,10 @@ export default function DashboardPage() {
     return <AdminDashboard roleName={roleName} />;
   }
 
-  // Default to Coordinator view for others (teachers/coordinators) for now
+  if (roleId === 4) {
+    return <TeacherDashboard />;
+  }
+
+  // Default to Coordinator view for others
   return <CoordinatorDashboard roleName={roleName} />;
 }

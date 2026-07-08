@@ -1,7 +1,14 @@
 import React from 'react';
-import { Search, Filter, Calendar, ClipboardList, Edit3, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Search, Filter, Calendar, ClipboardList, Edit3, CheckCircle2, AlertCircle, Globe, Users, FileText } from 'lucide-react';
+import { ShimmerTable, ShimmerCard } from '@/components/ui/Shimmer';
 
 export default function OMRStatusPage() {
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    const timer = setTimeout(() => setLoading(false), 800);
+    return () => clearTimeout(timer);
+  }, []);
   const tableData = [
     { id: 1, udise: '12345678901', school: 'Kendriya Vidyalaya No. 1', coordinator: 'Amit Verma', expected: '68,450', inProgress: '12,356', completed: '52,876', notStarted: '3,218', completion: '77.15%', status: 'On Track', updated: '20 May 2025, 10:30 AM' },
     { id: 2, udise: '12345678902', school: 'Kendriya Vidyalaya No. 2', coordinator: 'Sunita Sharma', expected: '62,340', inProgress: '10,245', completed: '45,890', notStarted: '6,205', completion: '73.60%', status: 'On Track', updated: '20 May 2025, 10:30 AM' },
@@ -17,30 +24,50 @@ export default function OMRStatusPage() {
       </div>
 
       {/* Filter Options */}
-      <div className="card flex justify-between items-end">
-        <div className="flex gap-4" style={{ flex: 1 }}>
-          <div style={{ flex: 1 }}>
-            <label className="text-sm font-medium text-muted block mb-2">Region</label>
-            <select style={{ width: '100%', padding: '8px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)' }}>
-              <option>North Region</option>
-            </select>
+      <div className="card" style={{ padding: '16px 20px' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: '16px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', flex: 1 }}>
+            {[
+              { label: 'Region', icon: <Globe size={14} />, options: ['All Regions'] },
+              { label: 'Coordinator', icon: <Users size={14} />, options: ['All Coordinators'] },
+              { label: 'Exam', icon: <FileText size={14} />, options: ['LAT 2025'] },
+            ].map((filter, i) => (
+              <div key={i}>
+                <label style={{ fontSize: '0.78rem', fontWeight: 600, color: '#475569', marginBottom: '6px', display: 'block' }}>{filter.label}</label>
+                <div style={{ position: 'relative' }}>
+                  <span style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#94A3B8', display: 'flex', alignItems: 'center' }}>
+                    {filter.icon}
+                  </span>
+                  <select style={{
+                    width: '100%', padding: '8px 12px 8px 32px', fontSize: '0.82rem',
+                    borderRadius: '8px', border: '1px solid #E2E8F0', background: 'white',
+                    color: '#1e293b', appearance: 'auto', cursor: 'pointer',
+                  }}>
+                    {filter.options.map((opt, j) => <option key={j}>{opt}</option>)}
+                  </select>
+                </div>
+              </div>
+            ))}
           </div>
-          <div style={{ flex: 1 }}>
-            <label className="text-sm font-medium text-muted block mb-2">Coordinator</label>
-            <select style={{ width: '100%', padding: '8px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)' }}>
-              <option>Rajesh Kumar (KV1001)</option>
-            </select>
+          <div style={{ display: 'flex', gap: '10px', flexShrink: 0, paddingBottom: '2px' }}>
+            <button
+              style={{
+                padding: '8px 20px', borderRadius: '8px', fontSize: '0.82rem', fontWeight: 500,
+                border: '1px solid #E2E8F0', background: 'white', color: '#475569', cursor: 'pointer',
+              }}
+            >
+              Clear
+            </button>
+            <button
+              style={{
+                padding: '8px 20px', borderRadius: '8px', fontSize: '0.82rem', fontWeight: 500,
+                border: 'none', background: '#6366F1', color: 'white', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: '6px',
+              }}
+            >
+              <Filter size={14} /> Apply Filters
+            </button>
           </div>
-          <div style={{ flex: 1 }}>
-            <label className="text-sm font-medium text-muted block mb-2">Exam</label>
-            <select style={{ width: '100%', padding: '8px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)' }}>
-              <option>LAT 2025</option>
-            </select>
-          </div>
-        </div>
-        <div className="flex gap-3 ml-6">
-           <button className="btn btn-outline" style={{ padding: '8px 16px' }}>Clear</button>
-           <button className="btn btn-primary" style={{ padding: '8px 16px' }}><Filter size={16} /> Apply Filters</button>
         </div>
       </div>
 
@@ -50,50 +77,61 @@ export default function OMRStatusPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-4" style={{ gap: '1.5rem' }}>
-        <div className="card flex items-center gap-4 py-4" style={{ background: '#F8FAFC' }}>
-          <div style={{ padding: '12px', background: 'var(--status-blue-bg)', color: 'var(--primary-purple)', borderRadius: '50%' }}>
-            <ClipboardList size={24} />
+      <div className="grid grid-cols-4" style={{ gap: '16px' }}>
+        {loading ? (
+          <>
+            <ShimmerCard />
+            <ShimmerCard />
+            <ShimmerCard />
+            <ShimmerCard />
+          </>
+        ) : (
+          <>
+        <div className="card flex items-center gap-3 py-3" style={{ padding: '14px 16px', background: '#F8FAFC' }}>
+          <div style={{ padding: '10px', background: 'var(--status-blue-bg)', color: 'var(--primary-purple)', borderRadius: '50%' }}>
+            <ClipboardList size={20} />
           </div>
           <div>
-            <div className="text-muted text-sm font-medium">Total OMR Expected</div>
+            <div style={{ fontSize: '0.75rem', color: '#64748B', fontWeight: 500 }}>Total OMR Expected</div>
             <div className="font-bold" style={{ fontSize: '1.5rem' }}>1,85,672</div>
-            <div className="text-xs text-muted">100%</div>
+            <div style={{ fontSize: '0.6875rem', color: '#94A3B8' }}>100%</div>
           </div>
         </div>
         
-        <div className="card flex items-center gap-4 py-4 border-l-4" style={{ borderLeftColor: 'var(--status-blue)' }}>
-          <div style={{ padding: '12px', border: '1px solid var(--status-blue)', color: 'var(--status-blue)', borderRadius: '50%' }}>
-            <Edit3 size={24} />
+        <div className="card flex items-center gap-3 py-3 border-l-4" style={{ padding: '14px 16px', borderLeftColor: 'var(--status-blue)' }}>
+          <div style={{ padding: '10px', border: '1px solid var(--status-blue)', color: 'var(--status-blue)', borderRadius: '50%' }}>
+            <Edit3 size={20} />
           </div>
           <div>
-            <div className="text-muted text-sm font-medium">OMR Entry In Progress</div>
+            <div style={{ fontSize: '0.75rem', color: '#64748B', fontWeight: 500 }}>OMR Entry In Progress</div>
             <div className="font-bold" style={{ fontSize: '1.5rem' }}>32,145</div>
-            <div style={{ color: 'var(--status-blue)', fontSize: '0.75rem', fontWeight: 600 }}>17.32%</div>
+            <div style={{ color: 'var(--status-blue)', fontSize: '0.6875rem', fontWeight: 600 }}>17.32%</div>
           </div>
         </div>
 
-        <div className="card flex items-center gap-4 py-4 border-l-4" style={{ borderLeftColor: 'var(--status-green)' }}>
-          <div style={{ padding: '12px', border: '1px solid var(--status-green)', color: 'var(--status-green)', borderRadius: '50%' }}>
-            <CheckCircle2 size={24} />
+        <div className="card flex items-center gap-3 py-3 border-l-4" style={{ padding: '14px 16px', borderLeftColor: 'var(--status-green)' }}>
+          <div style={{ padding: '10px', border: '1px solid var(--status-green)', color: 'var(--status-green)', borderRadius: '50%' }}>
+            <CheckCircle2 size={20} />
           </div>
           <div>
-            <div className="text-muted text-sm font-medium">OMR Entry Completed</div>
+            <div style={{ fontSize: '0.75rem', color: '#64748B', fontWeight: 500 }}>OMR Entry Completed</div>
             <div className="font-bold" style={{ fontSize: '1.5rem' }}>1,42,356</div>
-            <div style={{ color: 'var(--status-green)', fontSize: '0.75rem', fontWeight: 600 }}>76.67%</div>
+            <div style={{ color: 'var(--status-green)', fontSize: '0.6875rem', fontWeight: 600 }}>76.67%</div>
           </div>
         </div>
 
-        <div className="card flex items-center gap-4 py-4 border-l-4" style={{ borderLeftColor: 'var(--status-orange)' }}>
-          <div style={{ padding: '12px', border: '1px solid var(--status-orange)', color: 'var(--status-orange)', borderRadius: '50%' }}>
-            <AlertCircle size={24} />
+        <div className="card flex items-center gap-3 py-3 border-l-4" style={{ padding: '14px 16px', borderLeftColor: 'var(--status-orange)' }}>
+          <div style={{ padding: '10px', border: '1px solid var(--status-orange)', color: 'var(--status-orange)', borderRadius: '50%' }}>
+            <AlertCircle size={20} />
           </div>
           <div>
-            <div className="text-muted text-sm font-medium">Not Started</div>
+            <div style={{ fontSize: '0.75rem', color: '#64748B', fontWeight: 500 }}>Not Started</div>
             <div className="font-bold" style={{ fontSize: '1.5rem' }}>11,171</div>
-            <div style={{ color: 'var(--status-orange)', fontSize: '0.75rem', fontWeight: 600 }}>6.01%</div>
+            <div style={{ color: 'var(--status-orange)', fontSize: '0.6875rem', fontWeight: 600 }}>6.01%</div>
           </div>
         </div>
+        </>
+        )}
       </div>
 
       {/* Charts Section */}
@@ -171,7 +209,13 @@ export default function OMRStatusPage() {
               </tr>
             </thead>
             <tbody>
-              {tableData.map((row) => (
+              {loading ? (
+                <tr>
+                  <td colSpan={11} style={{ padding: 0 }}>
+                    <ShimmerTable columns={11} rows={3} />
+                  </td>
+                </tr>
+              ) : tableData.map((row) => (
                 <tr key={row.id} style={{ borderBottom: '1px solid var(--border-light)' }}>
                   <td style={{ padding: '1rem 1.5rem', color: 'var(--text-muted)' }}>{row.id}</td>
                   <td style={{ padding: '1rem', color: 'var(--text-muted)' }}>{row.udise}</td>

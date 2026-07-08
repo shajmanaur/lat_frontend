@@ -2,25 +2,61 @@
 import React, { useState } from 'react';
 import { 
   Filter, RotateCw, CheckCircle2, AlertCircle, Clock, 
-  Users, FileText, ChevronRight, X, Play, FileCheck, HelpCircle, FileSearch, ArrowRight
+  Users, FileText, ChevronRight, X, Play, FileCheck, HelpCircle, FileSearch, ArrowRight,
+  Globe, Building2, GraduationCap, ClipboardList
 } from 'lucide-react';
 import Link from 'next/link';
+import { ShimmerTable, ShimmerCard } from '@/components/ui/Shimmer';
+import { omrApi } from '@/services/api';
 
 export default function OMREvaluationPage() {
+  const [loading, setLoading] = useState(true);
+
+  React.useEffect(() => {
+    const timer = setTimeout(() => setLoading(false), 800);
+    return () => clearTimeout(timer);
+  }, []);
   const [isFiltered, setIsFiltered] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('Overview');
+  const [evalData, setEvalData] = React.useState([]);
 
-  const tableData = [
-    { id: 1, region: 'North Region', school: 'Kendriya Vidyalaya No. 1', udise: '12345678901', coordinator: 'Amit Verma', students: '1,256', completed: '1,256 (100%)', status: 'Completed', updated: '20 May 2025, 10:30 AM', action: 'View Details' },
-    { id: 2, region: 'North Region', school: 'Kendriya Vidyalaya No. 2', udise: '12345678902', coordinator: 'Sunita Sharma', students: '1,089', completed: '1,089 (100%)', status: 'Completed', updated: '20 May 2025, 09:15 AM', action: 'View Details' },
-    { id: 3, region: 'East Region', school: 'Kendriya Vidyalaya No. 3', udise: '12345678903', coordinator: 'Vikram Singh', students: '1,542', completed: '1,542 (100%)', status: 'Completed', updated: '19 May 2025, 04:45 PM', action: 'View Details' },
-    { id: 4, region: 'West Region', school: 'Kendriya Vidyalaya No. 4', udise: '12345678904', coordinator: 'Neha Gupta', students: '980', completed: '860 (87.76%)', status: 'Pending', updated: '-', action: 'Run Evaluation' },
-    { id: 5, region: 'South Region', school: 'Kendriya Vidyalaya No. 5', udise: '12345678905', coordinator: 'Pooja Das', students: '1,321', completed: '1,200 (90.84%)', status: 'Pending', updated: '-', action: 'Run Evaluation' },
-    { id: 6, region: 'Central Region', school: 'Kendriya Vidyalaya No. 6', udise: '12345678906', coordinator: 'Manoj Tiwari', students: '1,015', completed: '980 (96.55%)', status: 'In Progress', updated: '20 May 2025, 11:20 AM', action: 'View Progress' },
-    { id: 7, region: 'East Region', school: 'Kendriya Vidyalaya No. 7', udise: '12345678907', coordinator: 'Anita Patil', students: '1,233', completed: '1,233 (100%)', status: 'Completed', updated: '18 May 2025, 10:05 AM', action: 'View Details' },
-    { id: 8, region: 'North Region', school: 'Kendriya Vidyalaya No. 8', udise: '12345678908', coordinator: 'Rajesh Kumar', students: '886', completed: '784 (88.52%)', status: 'Pending', updated: '-', action: 'Run Evaluation' },
-  ];
+  // Fetch evaluation status on mount
+  React.useEffect(() => {
+    const fetchEval = async () => {
+      try {
+        const res = await omrApi.getEvaluationStatus();
+        if (res && res.data) {
+          setEvalData(res.data);
+        }
+      } catch (e) {
+        console.error('Failed to fetch evaluation status', e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchEval();
+  }, []);
+
+  // Derive stats from evalData
+  const totalStudents = evalData.reduce((sum, r) => sum + (Number(r.expected) || 0), 0);
+  const completed = evalData.reduce((sum, r) => sum + (Number(r.completed) || 0), 0);
+  const pending = evalData.reduce((sum, r) => sum + (Number(r.notStarted) || 0), 0);
+  const evaluated = completed; // Assuming evaluated equals completed
+  const errors = 0; // No error data from API currently
+
+  const tableData = evalData.map((row, idx) => ({
+    id: idx + 1,
+    region: row.regionName || row.region || '-',
+    school: row.school || '-',
+    udise: row.udise || row.udiseCode || '-',
+    coordinator: row.coordinator || '-',
+    students: row.expected?.toString() ?? '-',
+    completed: `${row.completed ?? '-'} (${row.completion || '-'})`,
+    status: row.status ?? '-',
+    updated: row.updated ?? '-',
+    action: row.status === 'Pending' ? 'Run Evaluation' : row.status === 'Completed' ? 'View Details' : 'View Progress',
+  }));
 
   const handleApplyFilters = () => setIsFiltered(true);
   const handleClearFilters = () => setIsFiltered(false);
@@ -63,27 +99,55 @@ export default function OMREvaluationPage() {
       </div>
 
       {/* Filter Options */}
-      <div className="card flex justify-between items-end flex-wrap gap-4">
-        <div className="grid grid-cols-6 gap-4" style={{ flex: 1 }}>
-          {[
-            { label: 'Region', options: ['All Regions'] },
-            { label: 'School', options: ['All Schools'] },
-            { label: 'Coordinator', options: ['All Coordinators'] },
-            { label: 'Grade', options: ['All Grades'] },
-            { label: 'Evaluation Status', options: ['All Statuses'] },
-            { label: 'Exam', options: ['LAT 2025'] },
-          ].map((filter, i) => (
-            <div key={i}>
-              <label className="text-xs font-medium text-muted block mb-2">{filter.label}</label>
-              <select style={{ width: '100%', padding: '8px 12px', fontSize: '0.85rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)' }}>
-                {filter.options.map((opt, j) => <option key={j}>{opt}</option>)}
-              </select>
-            </div>
-          ))}
-        </div>
-        <div className="flex gap-3 ml-4">
-           <button onClick={handleClearFilters} className="btn btn-outline" style={{ padding: '8px 16px', background: 'white' }}>Clear</button>
-           <button onClick={handleApplyFilters} className="btn btn-primary" style={{ padding: '8px 16px' }}><Filter size={16} /> Apply Filters</button>
+      <div className="card" style={{ padding: '16px 20px' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: '16px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '16px', flex: 1 }}>
+            {[
+              { label: 'Region', icon: <Globe size={14} />, options: ['All Regions'] },
+              { label: 'School', icon: <Building2 size={14} />, options: ['All Schools'] },
+              { label: 'Coordinator', icon: <Users size={14} />, options: ['All Coordinators'] },
+              { label: 'Grade', icon: <GraduationCap size={14} />, options: ['All Grades'] },
+              { label: 'Evaluation Status', icon: <ClipboardList size={14} />, options: ['All Statuses'] },
+              { label: 'Exam', icon: <FileText size={14} />, options: ['LAT 2025'] },
+            ].map((filter, i) => (
+              <div key={i}>
+                <label style={{ fontSize: '0.78rem', fontWeight: 600, color: '#475569', marginBottom: '6px', display: 'block' }}>{filter.label}</label>
+                <div style={{ position: 'relative' }}>
+                  <span style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#94A3B8', display: 'flex', alignItems: 'center' }}>
+                    {filter.icon}
+                  </span>
+                  <select style={{
+                    width: '100%', padding: '8px 12px 8px 32px', fontSize: '0.82rem',
+                    borderRadius: '8px', border: '1px solid #E2E8F0', background: 'white',
+                    color: '#1e293b', appearance: 'auto', cursor: 'pointer',
+                  }}>
+                    {filter.options.map((opt, j) => <option key={j}>{opt}</option>)}
+                  </select>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div style={{ display: 'flex', gap: '10px', flexShrink: 0, paddingBottom: '2px' }}>
+            <button
+              onClick={handleClearFilters}
+              style={{
+                padding: '8px 20px', borderRadius: '8px', fontSize: '0.82rem', fontWeight: 500,
+                border: '1px solid #E2E8F0', background: 'white', color: '#475569', cursor: 'pointer',
+              }}
+            >
+              Clear
+            </button>
+            <button
+              onClick={handleApplyFilters}
+              style={{
+                padding: '8px 20px', borderRadius: '8px', fontSize: '0.82rem', fontWeight: 500,
+                border: 'none', background: '#6366F1', color: 'white', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: '6px',
+              }}
+            >
+              <Filter size={14} /> Apply Filters
+            </button>
+          </div>
         </div>
       </div>
 
@@ -100,69 +164,81 @@ export default function OMREvaluationPage() {
             There are no evaluation records to display.<br/>
             Please apply filters or ensure OMR entries are completed before running evaluation.
           </p>
-          <Link href="/omr-entry-status" className="btn btn-primary" style={{ padding: '10px 24px' }}>
-            <Play size={16} fill="currentColor" /> Go to OMR Entry Status
+          <Link href="/coordinator/omr-status" className="btn btn-primary" style={{ padding: '10px 24px' }}>
+            <Play size={16} fill="currentColor" /> Go to OMR Status
           </Link>
         </div>
       ) : (
         /* Filled State */
         <>
           {/* Stats */}
-          <div className="grid grid-cols-5" style={{ gap: '1rem' }}>
-            <div className="card flex items-center gap-4 py-4 px-4 border-l-4" style={{ borderLeftColor: 'var(--primary-purple)' }}>
-              <div style={{ padding: '10px', background: '#EEF2FF', color: 'var(--primary-purple)', borderRadius: '50%' }}>
-                <Users size={20} />
+          <div className="grid grid-cols-5" style={{ gap: '12px' }}>
+            {loading ? (
+              <>
+                <ShimmerCard />
+                <ShimmerCard />
+                <ShimmerCard />
+                <ShimmerCard />
+                <ShimmerCard />
+              </>
+            ) : (
+              <>
+            <div className="card flex items-center gap-3 py-3 px-3 border-l-4" style={{ padding: '12px 14px', borderLeftColor: 'var(--primary-purple)' }}>
+              <div style={{ padding: '8px', background: '#EEF2FF', color: 'var(--primary-purple)', borderRadius: '50%' }}>
+                <Users size={18} />
               </div>
               <div>
-                <div className="text-muted text-xs font-medium mb-1">Total Students</div>
+                <div style={{ fontSize: '0.6875rem', color: '#64748B', fontWeight: 500, marginBottom: '2px' }}>Total Students</div>
                 <div className="font-bold" style={{ fontSize: '1.25rem' }}>1,85,672</div>
-                <div className="text-[10px] text-muted">100%</div>
+                <div style={{ fontSize: '0.625rem', color: '#94A3B8' }}>100%</div>
               </div>
             </div>
             
-            <div className="card flex items-center gap-4 py-4 px-4 border-l-4" style={{ borderLeftColor: 'var(--status-blue)' }}>
-              <div style={{ padding: '10px', background: '#EFF6FF', color: 'var(--status-blue)', borderRadius: '50%' }}>
-                <FileText size={20} />
+            <div className="card flex items-center gap-3 py-3 px-3 border-l-4" style={{ padding: '12px 14px', borderLeftColor: 'var(--status-blue)' }}>
+              <div style={{ padding: '8px', background: '#EFF6FF', color: 'var(--status-blue)', borderRadius: '50%' }}>
+                <FileText size={18} />
               </div>
               <div>
-                <div className="text-muted text-xs font-medium mb-1">OMR Entries Completed</div>
+                <div style={{ fontSize: '0.6875rem', color: '#64748B', fontWeight: 500, marginBottom: '2px' }}>OMR Entries Completed</div>
                 <div className="font-bold" style={{ fontSize: '1.25rem' }}>1,75,243</div>
-                <div style={{ color: 'var(--status-blue)', fontSize: '10px', fontWeight: 600 }}>94.37%</div>
+                <div style={{ color: 'var(--status-blue)', fontSize: '0.625rem', fontWeight: 600 }}>94.37%</div>
               </div>
             </div>
 
-            <div className="card flex items-center gap-4 py-4 px-4 border-l-4" style={{ borderLeftColor: 'var(--status-orange)' }}>
-              <div style={{ padding: '10px', background: '#FFF7ED', color: 'var(--status-orange)', borderRadius: '50%' }}>
-                <Clock size={20} />
+            <div className="card flex items-center gap-3 py-3 px-3 border-l-4" style={{ padding: '12px 14px', borderLeftColor: 'var(--status-orange)' }}>
+              <div style={{ padding: '8px', background: '#FFF7ED', color: 'var(--status-orange)', borderRadius: '50%' }}>
+                <Clock size={18} />
               </div>
               <div>
-                <div className="text-muted text-xs font-medium mb-1">Pending Evaluation</div>
+                <div style={{ fontSize: '0.6875rem', color: '#64748B', fontWeight: 500, marginBottom: '2px' }}>Pending Evaluation</div>
                 <div className="font-bold" style={{ fontSize: '1.25rem' }}>10,429</div>
-                <div style={{ color: 'var(--status-orange)', fontSize: '10px', fontWeight: 600 }}>5.62%</div>
+                <div style={{ color: 'var(--status-orange)', fontSize: '0.625rem', fontWeight: 600 }}>5.62%</div>
               </div>
             </div>
 
-            <div className="card flex items-center gap-4 py-4 px-4 border-l-4" style={{ borderLeftColor: 'var(--status-green)' }}>
-              <div style={{ padding: '10px', background: '#ECFDF5', color: 'var(--status-green)', borderRadius: '50%' }}>
-                <CheckCircle2 size={20} />
+            <div className="card flex items-center gap-3 py-3 px-3 border-l-4" style={{ padding: '12px 14px', borderLeftColor: 'var(--status-green)' }}>
+              <div style={{ padding: '8px', background: '#ECFDF5', color: 'var(--status-green)', borderRadius: '50%' }}>
+                <CheckCircle2 size={18} />
               </div>
               <div>
-                <div className="text-muted text-xs font-medium mb-1">Evaluated</div>
+                <div style={{ fontSize: '0.6875rem', color: '#64748B', fontWeight: 500, marginBottom: '2px' }}>Evaluated</div>
                 <div className="font-bold" style={{ fontSize: '1.25rem' }}>1,64,814</div>
-                <div style={{ color: 'var(--status-green)', fontSize: '10px', fontWeight: 600 }}>88.76%</div>
+                <div style={{ color: 'var(--status-green)', fontSize: '0.625rem', fontWeight: 600 }}>88.76%</div>
               </div>
             </div>
 
-            <div className="card flex items-center gap-4 py-4 px-4 border-l-4" style={{ borderLeftColor: '#EF4444' }}>
-              <div style={{ padding: '10px', background: '#FEF2F2', color: '#EF4444', borderRadius: '50%' }}>
-                <AlertCircle size={20} />
+            <div className="card flex items-center gap-3 py-3 px-3 border-l-4" style={{ padding: '12px 14px', borderLeftColor: '#EF4444' }}>
+              <div style={{ padding: '8px', background: '#FEF2F2', color: '#EF4444', borderRadius: '50%' }}>
+                <AlertCircle size={18} />
               </div>
               <div>
-                <div className="text-muted text-xs font-medium mb-1">Evaluation Errors</div>
+                <div style={{ fontSize: '0.6875rem', color: '#64748B', fontWeight: 500, marginBottom: '2px' }}>Evaluation Errors</div>
                 <div className="font-bold" style={{ fontSize: '1.25rem' }}>213</div>
-                <div style={{ color: '#EF4444', fontSize: '10px', fontWeight: 600 }}>0.11%</div>
+                <div style={{ color: '#EF4444', fontSize: '0.625rem', fontWeight: 600 }}>0.11%</div>
               </div>
             </div>
+            </>
+            )}
           </div>
 
           {/* Table Section */}
@@ -175,7 +251,7 @@ export default function OMREvaluationPage() {
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.8rem' }}>
                 <thead>
                   <tr style={{ background: '#F8FAFC', color: 'var(--text-muted)' }}>
-                    <th style={{ padding: '1rem', fontWeight: 600, pl: '1.5rem' }}>S. No.</th>
+                    <th style={{ padding: '1rem 1.5rem', fontWeight: 600 }}>S. No.</th>
                     <th style={{ padding: '1rem', fontWeight: 600 }}>Region</th>
                     <th style={{ padding: '1rem', fontWeight: 600 }}>School Name</th>
                     <th style={{ padding: '1rem', fontWeight: 600 }}>UDISE Code</th>
@@ -188,7 +264,13 @@ export default function OMREvaluationPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {tableData.map((row) => (
+                  {loading ? (
+                    <tr>
+                      <td colSpan={10} style={{ padding: 0 }}>
+                        <ShimmerTable columns={10} rows={8} />
+                      </td>
+                    </tr>
+                  ) : tableData.map((row) => (
                     <tr key={row.id} style={{ borderBottom: '1px solid var(--border-light)' }}>
                       <td style={{ padding: '1rem', color: 'var(--text-muted)' }}>{row.id}</td>
                       <td style={{ padding: '1rem' }}>{row.region}</td>

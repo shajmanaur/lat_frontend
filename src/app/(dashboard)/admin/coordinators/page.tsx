@@ -1,12 +1,13 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, Calendar, UploadCloud, Download, MoreVertical, Users, UserCheck, UserX, ChevronDown, X } from 'lucide-react';
+import { Search, Filter, Calendar, UploadCloud, Download, Users, UserCheck, UserX, ChevronDown, X, RotateCcw } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { regionsApi, schoolsApi, coordinatorsApi } from '@/services/api';
+import { ShimmerTable } from '@/components/ui/Shimmer';
 
 export default function CoordinatorsPage() {
-  const [coordinators, setCoordinators] = useState([]);
+  const [coordinators, setCoordinators] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [showAddMenu, setShowAddMenu] = useState(false);
   const [showSingleModal, setShowSingleModal] = useState(false);
@@ -15,6 +16,7 @@ export default function CoordinatorsPage() {
   // Dynamic dropdowns state
   const [regions, setRegions] = useState<any[]>([]);
   const [schools, setSchools] = useState<any[]>([]);
+  const [filterSchools, setFilterSchools] = useState<any[]>([]);
   
   const [singleForm, setSingleForm] = useState({
     name: '', email: '', mobile: '', region: '', school: ''
@@ -23,7 +25,12 @@ export default function CoordinatorsPage() {
   
   const [editForm, setEditForm] = useState<any>(null);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [activeDropdown, setActiveDropdown] = useState<number | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [regionFilter, setRegionFilter] = useState('');
+  const [schoolFilter, setSchoolFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('All');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const [bulkForm, setBulkForm] = useState({
     region: '', school: ''
@@ -37,11 +44,14 @@ export default function CoordinatorsPage() {
 
   const fetchCoordinators = async () => {
     try {
+      setLoading(true);
       const res = await coordinatorsApi.getCoordinators();
       const data = res.status === true && res.response ? res.response.data : res.data;
       setCoordinators(data || []);
     } catch (err) {
       console.error('Failed to fetch coordinators', err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -91,7 +101,27 @@ export default function CoordinatorsPage() {
     fetchSchools();
   }, [bulkForm.region]);
 
-  const validateForm = (form) => {
+  // Fetch schools for filter dropdown when region filter changes
+  useEffect(() => {
+    const fetchFilterSchools = async () => {
+      if (!regionFilter) {
+        setFilterSchools([]);
+        setSchoolFilter('');
+        return;
+      }
+      try {
+        const res = await schoolsApi.getSchoolsByRegion(regionFilter);
+        const data = res.status === true && res.response ? res.response.data : res.data;
+        setFilterSchools(data || []);
+        setSchoolFilter('');
+      } catch (err) {
+        console.error('Failed to fetch filter schools', err);
+      }
+    };
+    fetchFilterSchools();
+  }, [regionFilter]);
+
+  const validateForm = (form: any) => {
     const errs: any = {};
     if (!form.region) errs.region = 'Region is required.';
     if (!form.school) errs.school = 'School is required.';
@@ -109,7 +139,7 @@ export default function CoordinatorsPage() {
     return errs;
   };
 
-  const handleSingleSubmit = async (e) => {
+  const handleSingleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setGlobalError('');
     setFieldErrors({});
@@ -135,7 +165,7 @@ export default function CoordinatorsPage() {
     }
   };
 
-  const handleEditSubmit = async (e) => {
+  const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setGlobalError('');
     setFieldErrors({});
@@ -175,10 +205,39 @@ export default function CoordinatorsPage() {
     } catch (err) {
       console.error('Failed to toggle status', err);
     }
-    setActiveDropdown(null);
   };
 
-  const handleBulkSubmit = async (e) => {
+  const filteredCoordinators = coordinators.filter((c: any) => {
+    const matchesSearch = !searchQuery || 
+      (c.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (c.email || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (c.mobile || '').includes(searchQuery) ||
+      (c.region || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (c.school || '').toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const matchesRegion = !regionFilter || String(c.region_id || c.region) === regionFilter;
+    const matchesSchool = !schoolFilter || c.udise === schoolFilter || c.school === schoolFilter;
+    const matchesStatus = statusFilter === 'All' || (c.status || '').toLowerCase() === statusFilter.toLowerCase();
+    
+    return matchesSearch && matchesRegion && matchesSchool && matchesStatus;
+  });
+
+  const totalPages = Math.ceil(filteredCoordinators.length / itemsPerPage);
+  const paginatedData = filteredCoordinators.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  useEffect(() => { setCurrentPage(1); }, [searchQuery, itemsPerPage, regionFilter, schoolFilter, statusFilter]);
+
+  const handleResetFilters = () => {
+    setSearchQuery('');
+    setRegionFilter('');
+    setSchoolFilter('');
+    setStatusFilter('All');
+  };
+
+  const handleBulkSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setBulkError('');
     setBulkSuccess('');
@@ -231,15 +290,6 @@ export default function CoordinatorsPage() {
         
         <div className="flex items-center gap-3">
           <div style={{ position: 'relative' }}>
-            <Search size={16} style={{ position: 'absolute', left: '12px', top: '10px', color: 'var(--text-light)' }} />
-            <input 
-              type="text" 
-              placeholder="Search by name, email or mobile..." 
-              style={{ padding: '8px 12px 8px 36px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)', fontSize: '0.875rem', width: '250px' }}
-            />
-          </div>
-          
-          <div style={{ position: 'relative' }}>
             <button 
               className="btn btn-primary"
               onClick={() => setShowAddMenu(!showAddMenu)}
@@ -274,110 +324,264 @@ export default function CoordinatorsPage() {
       </div>
 
       {/* Stats */}
-      <div className="card flex items-center justify-around">
-        <div className="flex flex-col items-center gap-2">
-          <div style={{ padding: '10px', background: 'var(--status-blue-bg)', color: 'var(--status-blue)', borderRadius: '50%' }}>
-            <Users size={20} />
+      <div style={{
+        display: 'flex', alignItems: 'center', background: 'white',
+        borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', padding: '14px 0',
+        border: '1px solid #f1f5f9',
+      }}>
+        {/* Total Coordinators */}
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '12px', padding: '0 24px' }}>
+          <div style={{
+            width: '40px', height: '40px', borderRadius: '50%',
+            background: '#EEF2FF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+          }}>
+            <Users size={18} color="#6366F1" />
           </div>
-          <div className="text-muted text-sm font-medium">Total Coordinators</div>
-          <div className="font-bold" style={{ fontSize: '1.25rem' }}>12,742</div>
+          <div>
+            <div style={{ fontSize: '0.6875rem', color: '#64748b', fontWeight: 500, marginBottom: '2px' }}>Total Coordinators</div>
+            <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#1e293b', lineHeight: 1.2 }}>{coordinators.length.toLocaleString('en-IN')}</div>
+          </div>
         </div>
-        
-        <div style={{ width: '1px', height: '60px', background: 'var(--border-light)' }}></div>
-        
-        <div className="flex flex-col items-center gap-2">
-          <div style={{ padding: '10px', background: 'var(--status-green-bg)', color: 'var(--status-green)', borderRadius: '50%' }}>
-            <UserCheck size={20} />
+
+        <div style={{ width: '1px', height: '40px', background: '#e2e8f0' }}></div>
+
+        {/* Active Coordinators */}
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '12px', padding: '0 24px' }}>
+          <div style={{
+            width: '40px', height: '40px', borderRadius: '50%',
+            background: '#D1FAE5', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+          }}>
+            <UserCheck size={18} color="#10B981" />
           </div>
-          <div className="text-muted text-sm font-medium">Active Coordinators</div>
-          <div className="font-bold" style={{ fontSize: '1.25rem' }}>12,315</div>
+          <div>
+            <div style={{ fontSize: '0.6875rem', color: '#64748b', fontWeight: 500, marginBottom: '2px' }}>Active Coordinators</div>
+            <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#1e293b', lineHeight: 1.2 }}>
+              {coordinators.filter((c: any) => (c.status || '').toLowerCase() === 'active').length.toLocaleString('en-IN')}
+            </div>
+          </div>
         </div>
-        
-        <div style={{ width: '1px', height: '60px', background: 'var(--border-light)' }}></div>
-        
-        <div className="flex flex-col items-center gap-2">
-          <div style={{ padding: '10px', background: 'var(--status-red-bg)', color: 'var(--status-red)', borderRadius: '50%' }}>
-            <UserX size={20} />
+
+        <div style={{ width: '1px', height: '40px', background: '#e2e8f0' }}></div>
+
+        {/* Inactive Coordinators */}
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '12px', padding: '0 24px' }}>
+          <div style={{
+            width: '40px', height: '40px', borderRadius: '50%',
+            background: '#FEE2E2', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+          }}>
+            <UserX size={18} color="#EF4444" />
           </div>
-          <div className="text-muted text-sm font-medium">Inactive Coordinators</div>
-          <div className="font-bold" style={{ fontSize: '1.25rem' }}>427</div>
+          <div>
+            <div style={{ fontSize: '0.6875rem', color: '#64748b', fontWeight: 500, marginBottom: '2px' }}>Inactive Coordinators</div>
+            <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#1e293b', lineHeight: 1.2 }}>
+              {coordinators.filter((c: any) => (c.status || '').toLowerCase() === 'inactive').length.toLocaleString('en-IN')}
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Table Section */}
       <div className="card" style={{ padding: 0 }}>
-        <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--border-light)' }}>
-          <h3 style={{ fontSize: '1.1rem' }}>Coordinator List</h3>
+        {/* Filters */}
+        <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--border-light)', display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'nowrap' }}>
+          <div style={{ position: 'relative', minWidth: '240px', maxWidth: '280px', flexShrink: 0 }}>
+            <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94A3B8' }} />
+            <input 
+              type="text" 
+              placeholder="Search by name, email or mobile..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={{ width: '100%', padding: '10px 12px 10px 36px', borderRadius: '8px', border: '1px solid #E2E8F0', fontSize: '0.85rem', outline: 'none', color: '#1E293B', height: '40px', boxSizing: 'border-box' }}
+            />
+          </div>
+          <select 
+            value={regionFilter} onChange={(e) => setRegionFilter(e.target.value)}
+            style={{ padding: '0 32px 0 12px', borderRadius: '8px', border: '1px solid #E2E8F0', fontSize: '0.85rem', minWidth: '150px', color: '#1E293B', background: 'white', cursor: 'pointer', outline: 'none', height: '40px', boxSizing: 'border-box', appearance: 'none', backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394A3B8' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 10px center' }}>
+            <option value="">All Regions</option>
+            {regions.map((r: any) => <option key={r.region_id} value={r.region_id}>{r.region_name}</option>)}
+          </select>
+          <select 
+            value={schoolFilter} onChange={(e) => setSchoolFilter(e.target.value)}
+            style={{ padding: '0 32px 0 12px', borderRadius: '8px', border: '1px solid #E2E8F0', fontSize: '0.85rem', minWidth: '160px', color: !regionFilter ? '#94A3B8' : '#1E293B', background: 'white', cursor: 'pointer', outline: 'none', height: '40px', boxSizing: 'border-box', appearance: 'none', backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394A3B8' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 10px center' }}
+            disabled={!regionFilter}>
+            <option value="">All Schools</option>
+            {filterSchools.map((s: any) => <option key={s.school_id} value={s.udise_code}>{s.school_name}</option>)}
+          </select>
+          <select 
+            value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
+            style={{ padding: '0 32px 0 12px', borderRadius: '8px', border: '1px solid #E2E8F0', fontSize: '0.85rem', minWidth: '130px', color: '#1E293B', background: 'white', cursor: 'pointer', outline: 'none', height: '40px', boxSizing: 'border-box', appearance: 'none', backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394A3B8' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 10px center' }}>
+            <option value="All">All Status</option>
+            <option value="Active">Active</option>
+            <option value="Inactive">Inactive</option>
+          </select>
+          {(searchQuery || regionFilter || schoolFilter || statusFilter !== 'All') && (
+            <button onClick={handleResetFilters} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'white', padding: '0 16px', borderRadius: '8px', border: '1px solid #E2E8F0', fontSize: '0.85rem', cursor: 'pointer', color: '#64748B', whiteSpace: 'nowrap', flexShrink: 0, height: '40px', boxSizing: 'border-box' }}>
+              <RotateCcw size={14} /> Reset
+            </button>
+          )}
+        </div>
+
+        <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)' }}>Coordinator List</h3>
+          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+            Showing {filteredCoordinators.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1} to{' '}
+            {Math.min(currentPage * itemsPerPage, filteredCoordinators.length)} of{' '}
+            {filteredCoordinators.length.toLocaleString('en-IN')} coordinators
+          </span>
         </div>
         
         <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
+          {loading ? (
+            <ShimmerTable columns={9} rows={itemsPerPage || 10} />
+          ) : (
+          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
             <thead>
-              <tr style={{ background: '#F8FAFC', color: 'var(--text-muted)' }}>
-                <th style={{ padding: '1rem 1.5rem', fontWeight: 600 }}>S. No.</th>
-                <th style={{ padding: '1rem', fontWeight: 600 }}>Coordinator Name</th>
-                <th style={{ padding: '1rem', fontWeight: 600 }}>Email ID</th>
-                <th style={{ padding: '1rem', fontWeight: 600 }}>Mobile Number</th>
-                <th style={{ padding: '1rem', fontWeight: 600 }}>UDISE Code</th>
-                <th style={{ padding: '1rem', fontWeight: 600 }}>School Name</th>
-                <th style={{ padding: '1rem', fontWeight: 600 }}>Regions Assigned</th>
-                <th style={{ padding: '1rem', fontWeight: 600 }}>Status</th>
-                <th style={{ padding: '1rem', fontWeight: 600 }}>Imported On</th>
-                <th style={{ padding: '1rem 1.5rem', fontWeight: 600, textAlign: 'center' }}>Actions</th>
+              <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
+                <th style={{ padding: '0.75rem 1.5rem', fontWeight: 600, color: '#64748B', fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>S.No</th>
+                <th style={{ padding: '0.75rem 1rem', fontWeight: 600, color: '#64748B', fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Coordinator Name</th>
+                <th style={{ padding: '0.75rem 1rem', fontWeight: 600, color: '#64748B', fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Email ID</th>
+                <th style={{ padding: '0.75rem 1rem', fontWeight: 600, color: '#64748B', fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Mobile Number</th>
+                <th style={{ padding: '0.75rem 1rem', fontWeight: 600, color: '#64748B', fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>UDISE Code</th>
+                <th style={{ padding: '0.75rem 1rem', fontWeight: 600, color: '#64748B', fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>School Name</th>
+                <th style={{ padding: '0.75rem 1rem', fontWeight: 600, color: '#64748B', fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Region</th>
+                <th style={{ padding: '0.75rem 1rem', fontWeight: 600, color: '#64748B', fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Active</th>
+                <th style={{ padding: '0.75rem 1rem', fontWeight: 600, color: '#64748B', fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Imported On</th>
               </tr>
             </thead>
             <tbody>
-              {coordinators.map((row) => (
-                <tr key={row.id} style={{ borderBottom: '1px solid var(--border-light)' }}>
-                  <td style={{ padding: '1rem 1.5rem', color: 'var(--text-muted)' }}>{row.id}</td>
-                  <td style={{ padding: '1rem', fontWeight: 500 }}>{row.name}</td>
-                  <td style={{ padding: '1rem', color: 'var(--text-muted)' }}>{row.email}</td>
-                  <td style={{ padding: '1rem', color: 'var(--text-muted)' }}>{row.mobile}</td>
-                  <td style={{ padding: '1rem', color: 'var(--text-muted)' }}>{row.udise}</td>
-                  <td style={{ padding: '1rem', color: 'var(--text-muted)' }}>{row.school}</td>
-                  <td style={{ padding: '1rem', color: 'var(--text-muted)' }}>{row.region}</td>
-                  <td style={{ padding: '1rem' }}>
-                    <span 
-                      style={{ 
-                        padding: '4px 10px',
-                        borderRadius: '20px',
-                        fontSize: '0.75rem',
-                        background: row.status === 'Active' ? 'var(--status-green-bg)' : 'var(--status-red-bg)',
-                        color: row.status === 'Active' ? 'var(--status-green)' : 'var(--status-red)', 
-                        fontWeight: 600
-                      }}>
-                      {row.status}
-                    </span>
-                  </td>
-                  <td style={{ padding: '1rem', color: 'var(--text-muted)' }}>{new Date(row.imported).toLocaleDateString()}</td>
-                  <td style={{ padding: '1rem 1.5rem', textAlign: 'center', position: 'relative' }}>
-                    <button onClick={() => setActiveDropdown(activeDropdown === row.id ? null : row.id)} style={{ color: 'var(--primary-purple)', background: 'transparent', border: 'none', cursor: 'pointer' }}><MoreVertical size={16} /></button>
-                    {activeDropdown === row.id && (
-                      <div style={{
-                        position: 'absolute', top: '100%', right: '1.5rem', 
-                        background: 'white', border: '1px solid var(--border-light)', 
-                        borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                        zIndex: 50, width: '120px', overflow: 'hidden', textAlign: 'left'
-                      }}>
-                        <button 
-                          style={{ width: '100%', padding: '10px 16px', textAlign: 'left', borderBottom: '1px solid var(--border-light)', background: 'transparent', cursor: 'pointer', fontSize: '0.85rem' }}
-                          onClick={() => { setEditForm({ ...row, region: row.region_id, school: row.udise }); setShowEditModal(true); setActiveDropdown(null); }}
-                        >
-                          Edit
-                        </button>
-                        <button 
-                          style={{ width: '100%', padding: '10px 16px', textAlign: 'left', background: 'transparent', cursor: 'pointer', fontSize: '0.85rem', color: row.status === 'Active' ? 'var(--status-red)' : 'var(--status-green)' }}
-                          onClick={() => toggleStatus(row.id)}
-                        >
-                          Mark {row.status === 'Active' ? 'Inactive' : 'Active'}
-                        </button>
+              {paginatedData.map((row, idx) => {
+                const initials = (row.name || '').split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase();
+                const avatarColors = ['#6366F1', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#14B8A6', '#F97316'];
+                const colorIdx = (row.name || '').split('').reduce((acc: number, ch: string) => acc + ch.charCodeAt(0), 0) % avatarColors.length;
+                return (
+                  <tr key={row.id} style={{ borderBottom: '1px solid #F1F5F9', transition: 'background 0.15s' }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = '#F8FAFC')}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>
+                    <td style={{ padding: '0.85rem 1.5rem', color: '#94A3B8', fontSize: '0.82rem' }}>{(currentPage - 1) * itemsPerPage + idx + 1}</td>
+                    <td style={{ padding: '0.85rem 1rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <div style={{
+                          width: '34px', height: '34px', borderRadius: '50%',
+                          background: avatarColors[colorIdx], color: 'white',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: '0.75rem', fontWeight: 600, flexShrink: 0,
+                        }}>
+                          {initials || 'NA'}
+                        </div>
+                        <span style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{row.name}</span>
                       </div>
-                    )}
+                    </td>
+                    <td style={{ padding: '0.85rem 1rem', color: '#64748B' }}>{row.email}</td>
+                    <td style={{ padding: '0.85rem 1rem', color: '#64748B', fontFamily: 'monospace', fontSize: '0.82rem' }}>{row.mobile}</td>
+                    <td style={{ padding: '0.85rem 1rem', color: '#64748B', fontFamily: 'monospace', fontSize: '0.82rem' }}>{row.udise}</td>
+                    <td style={{ padding: '0.85rem 1rem', color: '#64748B', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.school}</td>
+                    <td style={{ padding: '0.85rem 1rem', color: '#64748B' }}>{row.region}</td>
+                    <td style={{ padding: '0.85rem 1rem' }}>
+                      <button
+                        onClick={() => toggleStatus(row.id)}
+                        style={{
+                          position: 'relative', width: '42px', height: '24px', borderRadius: '12px',
+                          background: row.status === 'Active' ? '#10B981' : '#E2E8F0',
+                          border: 'none', cursor: 'pointer', transition: 'background 0.2s', padding: 0,
+                        }}
+                        aria-label={`Toggle status for ${row.name}`}
+                      >
+                        <span style={{
+                          position: 'absolute', top: '3px',
+                          left: row.status === 'Active' ? '21px' : '3px',
+                          width: '18px', height: '18px', borderRadius: '50%',
+                          background: 'white', transition: 'left 0.2s',
+                          boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                        }} />
+                      </button>
+                    </td>
+                    <td style={{ padding: '0.85rem 1rem', color: '#64748B', fontSize: '0.82rem' }}>{new Date(row.imported).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
+                  </tr>
+                );
+              })}
+              {paginatedData.length === 0 && (
+                <tr>
+                  <td colSpan={9} style={{ padding: '3rem', textAlign: 'center', color: '#94A3B8' }}>
+                    No coordinators found.
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
+          )}
+        </div>
+
+        {/* Pagination */}
+        <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.82rem', color: '#64748B' }}>
+            <span>Rows per page:</span>
+            <select
+              value={itemsPerPage}
+              onChange={(e) => setItemsPerPage(Number(e.target.value))}
+              style={{ padding: '4px 8px', border: '1px solid #E2E8F0', borderRadius: '6px', fontSize: '0.82rem', background: 'white', cursor: 'pointer' }}
+            >
+              <option value={5}>5</option>
+              <option value={10}>10</option>
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+            </select>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <button
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              style={{
+                padding: '6px 12px', border: '1px solid #E2E8F0', borderRadius: '6px',
+                background: 'white', cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                color: currentPage === 1 ? '#CBD5E1' : '#64748B', fontSize: '0.82rem',
+              }}
+            >
+              ←
+            </button>
+            {Array.from({ length: totalPages }, (_, i) => i + 1)
+              .filter((page) => {
+                if (totalPages <= 5) return true;
+                if (page === 1 || page === totalPages) return true;
+                if (Math.abs(page - currentPage) <= 1) return true;
+                return false;
+              })
+              .reduce<(number | string)[]>((acc, page, i, arr) => {
+                if (i > 0 && (arr[i - 1] as number) !== page - 1) acc.push('...');
+                acc.push(page);
+                return acc;
+              }, [])
+              .map((page, i) =>
+                typeof page === 'string' ? (
+                  <span key={`ellipsis-${i}`} style={{ padding: '0 4px', color: '#CBD5E1', fontSize: '0.82rem' }}>...</span>
+                ) : (
+                  <button
+                    key={page}
+                    onClick={() => setCurrentPage(page)}
+                    style={{
+                      padding: '6px 12px', border: '1px solid', borderRadius: '6px', fontSize: '0.82rem',
+                      background: currentPage === page ? '#6366F1' : 'white',
+                      color: currentPage === page ? 'white' : '#64748B',
+                      borderColor: currentPage === page ? '#6366F1' : '#E2E8F0',
+                      cursor: 'pointer', fontWeight: currentPage === page ? 600 : 400,
+                    }}
+                  >
+                    {page}
+                  </button>
+                )
+              )}
+            <button
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages || totalPages === 0}
+              style={{
+                padding: '6px 12px', border: '1px solid #E2E8F0', borderRadius: '6px',
+                background: 'white', cursor: currentPage === totalPages || totalPages === 0 ? 'not-allowed' : 'pointer',
+                color: currentPage === totalPages || totalPages === 0 ? '#CBD5E1' : '#64748B', fontSize: '0.82rem',
+              }}
+            >
+              →
+            </button>
+          </div>
         </div>
       </div>
 

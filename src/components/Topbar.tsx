@@ -1,8 +1,10 @@
-import React, { useEffect, useState } from 'react';
-import { Menu, Bell } from 'lucide-react';
+import React, { useEffect, useState, useRef } from 'react';
+import { Menu, Bell, LogOut, User, ChevronDown } from 'lucide-react';
 
 export default function Topbar() {
   const [user, setUser] = useState<{ username: string, roleId: number } | null>(null);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const userStr = localStorage.getItem('user');
@@ -11,6 +13,16 @@ export default function Topbar() {
         setUser(JSON.parse(userStr));
       } catch (e) { }
     }
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   const getRoleName = (roleId: number) => {
@@ -26,6 +38,12 @@ export default function Topbar() {
 
   const getInitials = (username: string) => {
     return username.substring(0, 2).toUpperCase();
+  };
+
+  const handleSignOut = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    window.location.href = '/login';
   };
 
   return (
@@ -49,27 +67,41 @@ export default function Topbar() {
           }}></span>
         </button>
         
-        <div className="flex items-center gap-3 cursor-pointer">
-          <div style={{
-            width: '32px',
-            height: '32px',
-            borderRadius: '50%',
-            backgroundColor: 'rgba(76, 53, 230, 0.1)',
-            color: 'var(--primary-purple)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontWeight: '600',
-            fontSize: '0.8rem'
-          }}>
-            {user ? getInitials(user.username) : 'CB'}
+        <div className="user-dropdown" ref={dropdownRef}>
+          <div 
+            className="flex items-center gap-3 cursor-pointer"
+            onClick={() => setShowDropdown(!showDropdown)}
+          >
+            <div style={{
+              width: '32px',
+              height: '32px',
+              borderRadius: '50%',
+              backgroundColor: 'rgba(76, 53, 230, 0.1)',
+              color: 'var(--primary-purple)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontWeight: '600',
+              fontSize: '0.8rem'
+            }}>
+              {user ? getInitials(user.username) : 'CB'}
+            </div>
+            <div className="flex items-center gap-2">
+              <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-dark)' }}>
+                {user ? getRoleName(user.roleId) : 'Coordinator User'}
+              </span>
+              <ChevronDown size={14} style={{ color: 'var(--text-muted)' }} />
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-dark)' }}>
-              {user ? getRoleName(user.roleId) : 'Coordinator User'}
-            </span>
-            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>▼</span>
-          </div>
+          
+          {showDropdown && (
+            <div className="dropdown-menu">
+              <button className="dropdown-item" onClick={handleSignOut}>
+                <LogOut size={16} />
+                <span>Sign Out</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </header>
