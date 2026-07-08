@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Users, FileCheck, Clock, UserX, Search, Filter, ChevronDown, FileText, AlertCircle } from 'lucide-react';
 import { teacherOmrApi, omrApi } from '@/services/api';
 import toast from 'react-hot-toast';
+import { ShimmerTable, ShimmerCard } from '@/components/ui/Shimmer';
 
 const avatarColors = ['#6366F1', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#14B8A6', '#F97316'];
 
@@ -417,6 +418,16 @@ export default function OMRPage() {
 
       {/* Stat Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '16px' }}>
+        {loading ? (
+          <>
+            <ShimmerCard />
+            <ShimmerCard />
+            <ShimmerCard />
+            <ShimmerCard />
+            <ShimmerCard />
+          </>
+        ) : (
+          <>
         <div style={{ background: 'white', borderRadius: '12px', padding: '14px 16px', border: '1px solid #F1F5F9' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
             <div style={{ width: '44px', height: '44px', borderRadius: '10px', background: '#EEF2FF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -476,11 +487,16 @@ export default function OMRPage() {
             </div>
           </div>
         </div>
+        </>
+        )}
       </div>
 
       {/* Table */}
       <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #F1F5F9', overflow: 'hidden' }}>
         <div style={{ overflowX: 'auto' }}>
+          {loading ? (
+            <ShimmerTable columns={7} rows={itemsPerPage || 8} />
+          ) : (
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid #F1F5F9' }}>
@@ -494,9 +510,7 @@ export default function OMRPage() {
               </tr>
             </thead>
             <tbody>
-              {loading ? (
-                <tr><td colSpan={7} style={{ textAlign: 'center', padding: '40px', color: '#64748B' }}>Loading students...</td></tr>
-              ) : paginatedStudents.length === 0 ? (
+              {paginatedStudents.length === 0 ? (
                 <tr><td colSpan={7} style={{ textAlign: 'center', padding: '40px', color: '#64748B' }}>No students found</td></tr>
               ) : paginatedStudents.map((s, idx) => {
                 const name = s.full_name || '-';
@@ -526,6 +540,7 @@ export default function OMRPage() {
               })}
             </tbody>
           </table>
+          )}
         </div>
 
         {/* Pagination */}

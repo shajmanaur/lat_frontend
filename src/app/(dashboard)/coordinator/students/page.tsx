@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Search, Filter, Users, UserCheck, UserX, Building2, Calendar, ChevronDown, Eye, Edit3, MoreVertical, RefreshCw } from 'lucide-react';
 import { studentsApi, regionsApi, schoolsApi, dashboardApi, formatGradeName } from '@/services/api';
 import toast, { Toaster } from 'react-hot-toast';
+import { ShimmerTable, ShimmerCard } from '@/components/ui/Shimmer';
 
 const avatarColors = ['#6366F1', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#14B8A6', '#F97316'];
 
@@ -42,7 +43,7 @@ export default function StudentsPage() {
     setLoading(true);
     setError('');
     try {
-      const res = await studentsApi.getStudents(currentPage, itemsPerPage);
+      const res = await studentsApi.getStudents({ page: currentPage, limit: itemsPerPage });
       let studentList: any[] = [];
       let total = 0;
       if (res.status === true && res.response) {
@@ -136,6 +137,16 @@ export default function StudentsPage() {
 
       {/* Stat Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '16px' }}>
+        {loading ? (
+          <>
+            <ShimmerCard />
+            <ShimmerCard />
+            <ShimmerCard />
+            <ShimmerCard />
+            <ShimmerCard />
+          </>
+        ) : (
+          <>
         <div style={{ background: 'white', borderRadius: '12px', padding: '14px 16px', border: '1px solid #F1F5F9', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
             <div style={{ width: '44px', height: '44px', borderRadius: '10px', background: '#EEF2FF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -200,6 +211,8 @@ export default function StudentsPage() {
             </div>
           </div>
         </div>
+        </>
+        )}
       </div>
 
       {/* Filter Bar */}
@@ -318,8 +331,8 @@ export default function StudentsPage() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={9} style={{ textAlign: 'center', padding: '40px', color: '#64748B' }}>
-                    Loading students...
+                  <td colSpan={9} style={{ padding: 0 }}>
+                    <ShimmerTable columns={9} rows={itemsPerPage || 10} />
                   </td>
                 </tr>
               ) : error ? (

@@ -20,8 +20,9 @@ export default function LoginPage() {
     
     try {
       const response = await authApi.login({ username, password });
-      if (response.status === true) {
-        const payload = response.response.data;
+      if (response.status === 'success' || response.status === true) {
+        // The backend returns { status: 'success', data: { access_token, user } }
+        const payload = response.data || response.response?.data;
         localStorage.setItem('token', payload.access_token);
         localStorage.setItem('user', JSON.stringify(payload.user));
         router.push('/');

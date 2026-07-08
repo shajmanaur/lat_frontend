@@ -5,6 +5,7 @@ import { Users, UserCheck, Clock, Building, Search, Filter, RotateCcw, Plus, Edi
 import { formatGradeName } from '@/services/api';
 import axios from 'axios';
 import toast, { Toaster } from 'react-hot-toast';
+import { ShimmerTable, ShimmerCard } from '@/components/ui/Shimmer';
 
 export default function TeacherList() {
   const [showAddModal, setShowAddModal] = useState(false);
@@ -240,6 +241,15 @@ export default function TeacherList() {
 
       {/* 4 Stat Cards */}
       <div className="grid grid-cols-4" style={{ gap: '16px' }}>
+        {loading ? (
+          <>
+            <ShimmerCard />
+            <ShimmerCard />
+            <ShimmerCard />
+            <ShimmerCard />
+          </>
+        ) : (
+          <>
         <div style={{ background: 'white', borderRadius: '12px', padding: '14px 16px', border: '1px solid #F1F5F9', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
           <div className="flex items-center gap-3">
             <div style={{ 
@@ -303,6 +313,8 @@ export default function TeacherList() {
             </div>
           </div>
         </div>
+        </>
+        )}
       </div>
 
       {/* Filters and Table */}
@@ -369,7 +381,9 @@ export default function TeacherList() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={9} style={{ textAlign: 'center', padding: '48px', color: 'var(--text-muted)' }}>Loading teachers...</td>
+                  <td colSpan={9} style={{ padding: 0 }}>
+                    <ShimmerTable columns={9} rows={10} />
+                  </td>
                 </tr>
               ) : filteredTeachers.length === 0 ? (
                 <tr>

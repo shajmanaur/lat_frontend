@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Search, Filter, Calendar, UploadCloud, Download, Users, UserCheck, UserX, ChevronDown, X, RotateCcw } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { regionsApi, schoolsApi, coordinatorsApi } from '@/services/api';
+import { ShimmerTable } from '@/components/ui/Shimmer';
 
 export default function CoordinatorsPage() {
   const [coordinators, setCoordinators] = useState<any[]>([]);
@@ -43,11 +44,14 @@ export default function CoordinatorsPage() {
 
   const fetchCoordinators = async () => {
     try {
+      setLoading(true);
       const res = await coordinatorsApi.getCoordinators();
       const data = res.status === true && res.response ? res.response.data : res.data;
       setCoordinators(data || []);
     } catch (err) {
       console.error('Failed to fetch coordinators', err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -427,6 +431,9 @@ export default function CoordinatorsPage() {
         </div>
         
         <div style={{ overflowX: 'auto' }}>
+          {loading ? (
+            <ShimmerTable columns={9} rows={itemsPerPage || 10} />
+          ) : (
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
             <thead>
               <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
@@ -501,6 +508,7 @@ export default function CoordinatorsPage() {
               )}
             </tbody>
           </table>
+          )}
         </div>
 
         {/* Pagination */}

@@ -1,7 +1,14 @@
 import React from 'react';
 import { Search, Filter, Calendar, ClipboardList, Edit3, CheckCircle2, AlertCircle, Globe, Users, FileText } from 'lucide-react';
+import { ShimmerTable, ShimmerCard } from '@/components/ui/Shimmer';
 
 export default function OMRStatusPage() {
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    const timer = setTimeout(() => setLoading(false), 800);
+    return () => clearTimeout(timer);
+  }, []);
   const tableData = [
     { id: 1, udise: '12345678901', school: 'Kendriya Vidyalaya No. 1', coordinator: 'Amit Verma', expected: '68,450', inProgress: '12,356', completed: '52,876', notStarted: '3,218', completion: '77.15%', status: 'On Track', updated: '20 May 2025, 10:30 AM' },
     { id: 2, udise: '12345678902', school: 'Kendriya Vidyalaya No. 2', coordinator: 'Sunita Sharma', expected: '62,340', inProgress: '10,245', completed: '45,890', notStarted: '6,205', completion: '73.60%', status: 'On Track', updated: '20 May 2025, 10:30 AM' },
@@ -71,6 +78,15 @@ export default function OMRStatusPage() {
 
       {/* Stats */}
       <div className="grid grid-cols-4" style={{ gap: '16px' }}>
+        {loading ? (
+          <>
+            <ShimmerCard />
+            <ShimmerCard />
+            <ShimmerCard />
+            <ShimmerCard />
+          </>
+        ) : (
+          <>
         <div className="card flex items-center gap-3 py-3" style={{ padding: '14px 16px', background: '#F8FAFC' }}>
           <div style={{ padding: '10px', background: 'var(--status-blue-bg)', color: 'var(--primary-purple)', borderRadius: '50%' }}>
             <ClipboardList size={20} />
@@ -114,6 +130,8 @@ export default function OMRStatusPage() {
             <div style={{ color: 'var(--status-orange)', fontSize: '0.6875rem', fontWeight: 600 }}>6.01%</div>
           </div>
         </div>
+        </>
+        )}
       </div>
 
       {/* Charts Section */}
@@ -191,7 +209,13 @@ export default function OMRStatusPage() {
               </tr>
             </thead>
             <tbody>
-              {tableData.map((row) => (
+              {loading ? (
+                <tr>
+                  <td colSpan={11} style={{ padding: 0 }}>
+                    <ShimmerTable columns={11} rows={3} />
+                  </td>
+                </tr>
+              ) : tableData.map((row) => (
                 <tr key={row.id} style={{ borderBottom: '1px solid var(--border-light)' }}>
                   <td style={{ padding: '1rem 1.5rem', color: 'var(--text-muted)' }}>{row.id}</td>
                   <td style={{ padding: '1rem', color: 'var(--text-muted)' }}>{row.udise}</td>

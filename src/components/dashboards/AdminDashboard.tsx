@@ -4,6 +4,7 @@ import { Users, User, ClipboardList, ArrowRight, UserCheck, UserX, FileCheck, Ch
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area, LabelList } from 'recharts';
 import Link from 'next/link';
 import { api } from '@/services/api';
+import { ShimmerCard, ShimmerTable } from '@/components/ui/Shimmer';
 
 const sparkData1 = [{ v: 40 }, { v: 55 }, { v: 45 }, { v: 70 }, { v: 60 }, { v: 80 }, { v: 72 }];
 const sparkData2 = [{ v: 30 }, { v: 50 }, { v: 40 }, { v: 65 }, { v: 55 }, { v: 75 }, { v: 68 }];
@@ -72,7 +73,30 @@ export default function AdminDashboard({ roleName }: { roleName: string }) {
   }, []);
 
   if (loading) {
-    return <div className="p-8 text-center text-slate-500">Loading dashboard data...</div>;
+    return (
+      <div className="flex flex-col gap-6">
+        {/* Header Shimmer */}
+        <div style={{ height: '60px', width: '30%', background: '#F1F5F9', borderRadius: '8px', animation: 'pulse 1.5s infinite' }}></div>
+        {/* Stat Cards */}
+        <div className="grid grid-cols-4 gap-4">
+          <ShimmerCard />
+          <ShimmerCard />
+          <ShimmerCard />
+          <ShimmerCard />
+        </div>
+        {/* Middle Row */}
+        <div className="grid grid-cols-3 gap-4">
+          <div className="col-span-2"><ShimmerCard height="300px" /></div>
+          <div className="col-span-1"><ShimmerCard height="300px" /></div>
+        </div>
+        {/* Bottom Row */}
+        <div className="grid grid-cols-3 gap-4">
+          <ShimmerCard height="300px" />
+          <ShimmerCard height="300px" />
+          <ShimmerCard height="300px" />
+        </div>
+      </div>
+    );
   }
 
   const presentPct = stats.students > 0 ? ((stats.studentsPresent / stats.students) * 100).toFixed(2) : '0.00';
@@ -133,10 +157,10 @@ export default function AdminDashboard({ roleName }: { roleName: string }) {
       {/* 4 Stat Cards */}
       <div className="grid grid-cols-4" style={{ gap: '16px' }}>
         {[
-          { label: 'Coordinators', value: stats.coordinators, sub: 'Active Coordinators', bg: '#EDE9FE', icon: <Users size={20} />, color: '#6366F1', link: '/coordinators', spark: sparkData1, id: 'sparkPurple' },
-          { label: 'Teachers', value: stats.teachers, sub: 'Across All Schools', bg: '#D1FAE5', icon: <User size={20} />, color: '#10B981', link: '/teachers', spark: sparkData2, id: 'sparkGreen' },
-          { label: 'Students Registered', value: stats.students, sub: 'Total Students', bg: '#FFEDD5', icon: <Users size={20} />, color: '#F97316', link: '/students', spark: sparkData3, id: 'sparkOrange' },
-          { label: 'OMR Entered', value: stats.omrEntered, sub: 'Students Responses', bg: '#DBEAFE', icon: <ClipboardList size={20} />, color: '#3B82F6', link: '/omr-entry-status', spark: sparkData4, id: 'sparkBlue' },
+          { label: 'Coordinators', value: stats.coordinators, sub: 'Active Coordinators', bg: '#EDE9FE', icon: <Users size={20} />, color: '#6366F1', link: '/admin/coordinators', spark: sparkData1, id: 'sparkPurple' },
+          { label: 'Teachers', value: stats.teachers, sub: 'Across All Schools', bg: '#D1FAE5', icon: <User size={20} />, color: '#10B981', link: '/coordinator/teachers', spark: sparkData2, id: 'sparkGreen' },
+          { label: 'Students Registered', value: stats.students, sub: 'Total Students', bg: '#FFEDD5', icon: <Users size={20} />, color: '#F97316', link: '/admin/students', spark: sparkData3, id: 'sparkOrange' },
+          { label: 'OMR Entered', value: stats.omrEntered, sub: 'Students Responses', bg: '#DBEAFE', icon: <ClipboardList size={20} />, color: '#3B82F6', link: '/admin/omr-evaluation', spark: sparkData4, id: 'sparkBlue' },
         ].map((card, i) => (
           <div key={i} className="card" style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', marginBottom: '10px' }}>

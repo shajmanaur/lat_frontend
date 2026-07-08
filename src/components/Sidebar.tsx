@@ -34,13 +34,7 @@ interface Menu {
   priority: number;
 }
 
-// Default menus for Teacher role
-const teacherMenus: Menu[] = [
-  { id: 1, menu_name: 'Dashboard', menu_link: '/', menu_icon: 'Home', menu_remarks: 'MAIN', priority: 1 },
-  { id: 2, menu_name: 'My Allocations', menu_link: '/allocations', menu_icon: 'ClipboardList', menu_remarks: 'ASSESSMENT', priority: 2 },
-  { id: 3, menu_name: 'Digital OMR Entry', menu_link: '/omr-entry-status', menu_icon: 'FileText', menu_remarks: 'ASSESSMENT', priority: 3 },
-  { id: 4, menu_name: 'Help & Support', menu_link: '/support', menu_icon: 'Headphones', menu_remarks: 'SUPPORT', priority: 4 },
-];
+
 
 export default function Sidebar() {
   const pathname = usePathname();
@@ -68,23 +62,9 @@ export default function Sidebar() {
   }, []);
 
   // Get user role from localStorage
-  const getUserRole = (): number | null => {
-    if (typeof window === 'undefined') return null;
-    try {
-      const userStr = localStorage.getItem('user');
-      if (userStr) {
-        const user = JSON.parse(userStr);
-        return user.roleId;
-      }
-    } catch (e) {}
-    return null;
-  };
 
   // Determine which menus to show
-  const roleId = getUserRole();
-  // For teachers (roleId === 4), always use hardcoded menus
-  // For others, use API menus if available, otherwise fallback
-  const effectiveMenus = roleId === 4 ? teacherMenus : (menus.length > 0 ? menus : []);
+  const effectiveMenus = menus.length > 0 ? menus : [];
 
   // Group menus by category (menu_remarks)
   const groupedMenus = effectiveMenus.reduce((acc, menu) => {

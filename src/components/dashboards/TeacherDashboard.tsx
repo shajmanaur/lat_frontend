@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { ClipboardList, Users, FileCheck, Clock, ChevronRight, Info, AlertTriangle, UserPlus, Headphones, Search } from 'lucide-react';
 import Link from 'next/link';
 import { studentsApi, dashboardApi, teachersApi, authApi, teacherOmrApi } from '@/services/api';
+import { ShimmerCard, ShimmerTable } from '@/components/ui/Shimmer';
 
 const avatarColors = ['#6366F1', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#14B8A6', '#F97316'];
 
@@ -77,83 +78,58 @@ export default function TeacherDashboard() {
         const omrData = omrSummaryRes?.response?.data || omrSummaryRes?.data || {};
         setStats(prev => ({
           ...prev,
-          totalAllocations: omrData.totalGrades || omrData.total_grades || prev.totalAllocations,
+          totalAllocations: omrData.totalGradesAssigned || omrData.totalGrades || omrData.total_grades || prev.totalAllocations,
           studentsAllocated: omrData.totalStudents || omrData.total_students || prev.studentsAllocated,
           omrCompleted: omrData.omrCompleted || omrData.omr_completed || prev.omrCompleted,
-          pendingOmr: omrData.pendingOmr || omrData.pending_omr || prev.pendingOmr,
+          pendingOmr: omrData.pending || omrData.pendingOmr || omrData.pending_omr || prev.pendingOmr,
         }));
       } catch {}
 
-      // Get teacher allocations using centralized API
+      // Get teacher allocations using teacherOmrApi
       try {
-        const allocRes = await teachersApi.getAllocations();
-        const allocData = allocRes?.response?.data || allocRes?.data || [];
-        const teacherAllocations = Array.isArray(allocData) ? allocData : [];
-        setAllocations(teacherAllocations);
+        const gradesRes = await teacherOmrApi.getGrades();
+        const gradesData = gradesRes?.response?.data || gradesRes?.data || [];
+        const teacherGrades = Array.isArray(gradesData) ? gradesData : [];
+        
+        // Map to allocations format expected by the UI
+        const mappedAllocations = teacherGrades.map(g => ({
+          grade: g.gradeName?.replace('Grade ', '') || g.gradeId,
+          grade_name: g.gradeName,
+          section: g.sections,
+          students_count: g.students,
+          gradeId: g.gradeId
+        }));
+        
+        setAllocations(mappedAllocations);
 
-        // Fetch students allocated to this teacher's grade/section combos
+        // Fetch students allocated to this teacher's grades
         const allStudents: any[] = [];
-        const seenAllocations = new Set<string>();
-
-        for (const alloc of teacherAllocations) {
-          const grade = alloc.grade || alloc.grade_name;
-          const section = alloc.section;
-          if (!grade || !section) continue;
-
-          const allocKey = `${grade}-${section}`;
-          if (seenAllocations.has(allocKey)) continue;
-          seenAllocations.add(allocKey);
-
-          // Fetch students page by page (up to 200 per grade/section combo)
-          let page = 1;
-          let hasMore = true;
-          while (hasMore) {
-            try {
-              const studentRes = await studentsApi.getStudents(page, 200);
-              let studentList: any[] = [];
-              if (studentRes?.status === true && studentRes?.response) {
-                const resp = studentRes.response;
-                if (resp.meta) {
-                  studentList = Array.isArray(resp.data) ? resp.data : [];
-                } else if (Array.isArray(resp)) {
-                  studentList = resp;
-                } else {
-                  studentList = resp.data || resp.students || resp.items || [];
-                }
-              } else if (Array.isArray(studentRes)) {
-                studentList = studentRes;
-              } else if (studentRes?.data) {
-                studentList = Array.isArray(studentRes.data) ? studentRes.data : [];
-              }
-
-              // Filter by grade and section
-              const filtered = studentList.filter((s: any) => {
-                const studentGrade = typeof s.grade === 'object' ? s.grade?.grade_name : s.grade;
-                const gradeStr = String(studentGrade || '');
-                const gradeNum = gradeStr.replace('Grade ', '').trim();
-                const allocGradeStr = String(grade || '');
-                const allocGradeNum = allocGradeStr.replace('Grade ', '').trim();
-
-                const gradeMatch = gradeNum === allocGradeNum || gradeStr === allocGradeStr || gradeStr.toLowerCase() === allocGradeStr.toLowerCase();
-                const sectionMatch = String(s.section || '') === String(section || '');
-                return gradeMatch && sectionMatch;
-              });
-
-              allStudents.push(...filtered);
-
-              // If we got fewer than 200, no more pages
-              if (studentList.length < 200) {
-                hasMore = false;
-              } else {
-                page++;
-              }
-            } catch {
-              hasMore = false;
+        
+        for (const gradeObj of mappedAllocations) {
+          if (!gradeObj.gradeId) continue;
+          
+          try {
+            const studentRes = await teacherOmrApi.getStudents(gradeObj.gradeId);
+            let studentList = [];
+            if (studentRes?.data?.students) {
+              studentList = studentRes.data.students;
+            } else if (studentRes?.response?.data?.students) {
+              studentList = studentRes.response.data.students;
+            } else if (Array.isArray(studentRes?.data)) {
+              studentList = studentRes.data;
+            } else if (Array.isArray(studentRes)) {
+              studentList = studentRes;
             }
+            
+            if (Array.isArray(studentList)) {
+              allStudents.push(...studentList);
+            }
+          } catch (err) {
+            console.error(`Failed to fetch students for grade ${gradeObj.gradeId}`, err);
           }
         }
 
-        // Deduplicate by student id
+        // Deduplicate by student id (though they should be unique per grade usually)
         const seen = new Set<number>();
         const unique = allStudents.filter((s: any) => {
           const id = s.id || s.student_id;
@@ -190,6 +166,27 @@ export default function TeacherDashboard() {
     const apaar = (s.apaarId || s.apaar_id || '').toLowerCase();
     return name.includes(q) || apaar.includes(q);
   });
+
+  if (loading) {
+    return (
+      <div className="flex flex-col gap-6">
+        {/* Header Shimmer */}
+        <div style={{ height: '60px', width: '30%', background: '#F1F5F9', borderRadius: '8px', animation: 'pulse 1.5s infinite' }}></div>
+        {/* Stat Cards */}
+        <div className="grid grid-cols-4 gap-4">
+          <ShimmerCard />
+          <ShimmerCard />
+          <ShimmerCard />
+          <ShimmerCard />
+        </div>
+        {/* Chart / List Shimmer */}
+        <div className="grid grid-cols-3 gap-4">
+          <div className="col-span-2"><ShimmerCard height="400px" /></div>
+          <div className="col-span-1"><ShimmerCard height="400px" /></div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -315,7 +312,7 @@ export default function TeacherDashboard() {
                         <div style={{ fontSize: '0.75rem', color: '#64748B' }}>{alloc.students_count || 0} students</div>
                       </div>
                     </div>
-                    <Link href="/omr-entry-status" style={{ padding: '6px 12px', borderRadius: '8px', background: '#6366F1', color: 'white', fontSize: '0.75rem', fontWeight: 500, textDecoration: 'none' }}>
+                    <Link href="/teacher/omr-entry-status" style={{ padding: '6px 12px', borderRadius: '8px', background: '#6366F1', color: 'white', fontSize: '0.75rem', fontWeight: 500, textDecoration: 'none' }}>
                       Enter OMR
                     </Link>
                   </div>

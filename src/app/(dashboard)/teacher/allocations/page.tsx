@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { studentsApi, teacherOmrApi } from '@/services/api';
 import toast, { Toaster } from 'react-hot-toast';
 import * as XLSX from 'xlsx';
+import { ShimmerTable, ShimmerCard } from '@/components/ui/Shimmer';
 
 const avatarColors = ['#6366F1', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#14B8A6', '#F97316'];
 const gradeColors: Record<string, string> = {
@@ -113,98 +114,20 @@ export default function MyAllocation() {
         console.warn('New grades API failed, falling back to allocations API:', gradeErr);
       }
 
-      // Fallback: if new API returned no data, try the old allocations endpoint
-      if (gradeList.length === 0) {
-        try {
-          const token = localStorage.getItem('token');
-          const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api/v1';
-          const allocRes = await fetch(`${apiUrl}/teachers/allocations`, {
-            headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' }
-          });
-          const allocJson = await allocRes.json();
-          console.log('Fallback allocations API response:', JSON.stringify(allocJson, null, 2));
-
-          let rawAllocData = allocJson?.response?.data || allocJson?.response || allocJson?.data || allocJson;
-          let teacherAllocs: any[] = [];
-
-          if (Array.isArray(rawAllocData)) {
-            const firstItem = rawAllocData[0];
-            if (firstItem && (firstItem.allocations || firstItem.allocation)) {
-              const userRes = await fetch(`${apiUrl}/auth/me`, {
-                headers: { Authorization: `Bearer ${token}` }
-              });
-              const userJson = await userRes.json();
-              const userData = userJson?.response?.data || userJson?.data || userJson;
-              const currentUserId = userData?.id || userData?.user_id || userData?.data?.id;
-
-              let teacherEntry = null;
-              if (currentUserId) {
-                teacherEntry = rawAllocData.find((t: any) =>
-                  t.id === currentUserId || t.teacher_id === currentUserId || t.user_id === currentUserId
-                );
-              }
-              if (!teacherEntry) teacherEntry = rawAllocData[0];
-              teacherAllocs = teacherEntry?.allocations || teacherEntry?.allocation || [];
-            } else {
-              teacherAllocs = rawAllocData;
-            }
-          } else if (rawAllocData && typeof rawAllocData === 'object') {
-            if (rawAllocData.allocations) {
-              const allocs = rawAllocData.allocations;
-              if (Array.isArray(allocs)) {
-                const firstItem = allocs[0];
-                if (firstItem && (firstItem.allocations || firstItem.allocation)) {
-                  teacherAllocs = firstItem.allocations || firstItem.allocation || [];
-                } else {
-                  teacherAllocs = allocs;
-                }
-              }
-            } else if (rawAllocData.allocation) {
-              teacherAllocs = Array.isArray(rawAllocData.allocation) ? rawAllocData.allocation : [];
-            } else {
-              teacherAllocs = [rawAllocData];
-            }
-          }
-
-          // Convert old format to grade list
-          const tempGradeMap = new Map<string, any>();
-          teacherAllocs.forEach((alloc: any) => {
-            const grade = alloc.grade || alloc.grade_name || alloc.gradeName;
-            const gradeKey = getGradeNumber(grade);
-            const section = alloc.section || alloc.section_name || '';
-            if (!gradeKey) return;
-
-            if (!tempGradeMap.has(gradeKey)) {
-              tempGradeMap.set(gradeKey, {
-                grade_id: alloc.grade_id || gradeKey,
-                grade_name: getGradeLabel(grade),
-                sections: [],
-                student_count: 0,
-              });
-            }
-            const entry = tempGradeMap.get(gradeKey)!;
-            if (section && !entry.sections.includes(section)) {
-              entry.sections.push(section);
-            }
-            entry.student_count += alloc.students_count || alloc.student_count || alloc.studentCount || 0;
-          });
-
-          gradeList = Array.from(tempGradeMap.values());
-        } catch (allocErr) {
-          console.error('Fallback allocations API also failed:', allocErr);
-        }
-      }
 
       console.log('Final gradeList:', gradeList);
 
       // Map API response to our grade format
       const gradeMap = new Map<string, { grade: string; gradeId: number; sections: string[]; studentCount: number }>();
       gradeList.forEach((g: any) => {
-        const gradeId = g.grade_id || g.id;
-        const gradeName = g.grade_name || g.name || String(gradeId);
+        const gradeId = g.grade_id || g.id || g.gradeId;
+        const gradeName = g.grade_name || g.gradeName || g.name || String(gradeId);
         const gradeKey = getGradeNumber(gradeName) || String(gradeId);
-        const sections = g.sections || (g.section ? [g.section] : []);
-        const studentCount = g.student_count || g.students_count || g.total_students || 0;
+        let sections = g.sections || (g.section ? [g.section] : []);
+        if (typeof sections === 'string') {
+          sections = sections.split(',').map(s => s.trim()).filter(Boolean);
+        }
+        const studentCount = g.student_count || g.students_count || g.students || g.total_students || 0;
 
         if (!gradeKey) return;
 
@@ -268,41 +191,6 @@ export default function MyAllocation() {
         console.warn('New students API failed, falling back to students list API:', studentErr);
       }
 
-      // Fallback: if new API returned no data, try the old students endpoint with filtering
-      if (studentList.length === 0) {
-        try {
-          const res = await studentsApi.getStudents(1, 500);
-          let allStudents: any[] = [];
-          if (res?.status === true && res?.response) {
-            const resp = res.response;
-            if (resp.meta) {
-              allStudents = Array.isArray(resp.data) ? resp.data : [];
-            } else if (Array.isArray(resp)) {
-              allStudents = resp;
-            } else {
-              allStudents = resp.data || resp.students || resp.items || [];
-            }
-          } else if (Array.isArray(res)) {
-            allStudents = res;
-          } else if (res?.data) {
-            allStudents = Array.isArray(res.data) ? res.data : [];
-          }
-
-          // Filter by grade and sections
-          studentList = allStudents.filter((s: any) => {
-            const studentGrade = typeof s.grade === 'object' ? s.grade?.grade_name : s.grade;
-            const gradeNum = getGradeNumber(studentGrade);
-            const gradeMatch = gradeNum === gradeKey || String(studentGrade || '').toLowerCase() === gradeEntry.grade.toLowerCase();
-            const sectionMatch = gradeEntry.sections.length === 0 || gradeEntry.sections.includes(s.section || '');
-            const searchMatch = !studentSearch ||
-              (s.name || s.student_name || s.full_name || '').toLowerCase().includes(studentSearch.toLowerCase()) ||
-              String(s.apaar_id || s.apaarId || '').toLowerCase().includes(studentSearch.toLowerCase());
-            return gradeMatch && sectionMatch && searchMatch;
-          });
-        } catch (fallbackErr) {
-          console.error('Fallback students API also failed:', fallbackErr);
-        }
-      }
 
       // Filter by sections if needed
       const filtered = gradeEntry.sections.length > 0 && studentList.length > 0
@@ -486,6 +374,17 @@ export default function MyAllocation() {
   const selectedGradeEntry = allocations.find(g => getGradeNumber(g.grade) === selectedGrade);
   const today = new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', weekday: 'long' });
 
+  const renderStatus = (status: string) => {
+    const s = String(status || '').toLowerCase();
+    if (s === 'completed') return <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '4px 12px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 500, background: '#D1FAE5', color: '#10B981' }}><CheckCircle2 size={14} /> Completed</span>;
+    if (s === 'in progress') return <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '4px 12px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 500, background: '#FEF3C7', color: '#F59E0B' }}>↻ In Progress</span>;
+    if (s === 'pending') return <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '4px 12px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 500, background: '#FEF9C3', color: '#CA8A04' }}>○ Pending</span>;
+    if (s === 'not uploaded') return <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '4px 12px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 500, background: '#FEE2E2', color: '#EF4444' }}>! Not Uploaded</span>;
+    if (s === 'absent') return <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '4px 12px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 500, background: '#F1F5F9', color: '#64748B' }}>- Absent</span>;
+    if (s === 'added') return <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '4px 12px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 500, background: '#D1FAE5', color: '#10B981' }}><CheckCircle2 size={14} /> Added</span>;
+    return <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '4px 12px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 500, background: '#FEE2E2', color: '#EF4444' }}><XCircle size={14} /> Not Started</span>;
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       <Toaster position="top-right" />
@@ -528,7 +427,11 @@ export default function MyAllocation() {
         </div>
 
         {loading ? (
-          <div style={{ textAlign: 'center', padding: '40px', color: '#64748B' }}>Loading allocations...</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
+            <ShimmerCard />
+            <ShimmerCard />
+            <ShimmerCard />
+          </div>
         ) : allocations.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '40px', color: '#64748B' }}>
             <p>No grades assigned yet.</p>
@@ -633,7 +536,7 @@ export default function MyAllocation() {
 
           {/* Table */}
           {studentsLoading ? (
-            <div style={{ textAlign: 'center', padding: '48px', color: '#64748B' }}>Loading students...</div>
+            <ShimmerTable columns={8} rows={studentsPerPage || 10} />
           ) : filteredStudents.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '48px', color: '#64748B' }}>No students found.</div>
           ) : (
@@ -684,15 +587,7 @@ export default function MyAllocation() {
                           <td style={{ padding: '14px 16px', color: '#64748B' }}>{gender}</td>
                           <td style={{ padding: '14px 16px', color: '#64748B' }}>{section}</td>
                           <td style={{ padding: '14px 16px' }}>
-                            <span style={{
-                              display: 'inline-flex', alignItems: 'center', gap: '6px',
-                              padding: '4px 12px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 500,
-                              background: omrStatus === 'added' ? '#D1FAE5' : '#FEE2E2',
-                              color: omrStatus === 'added' ? '#10B981' : '#EF4444',
-                            }}>
-                              {omrStatus === 'added' ? <CheckCircle2 size={14} /> : <XCircle size={14} />}
-                              {omrStatus === 'added' ? 'Added' : 'Not Started'}
-                            </span>
+                            {renderStatus(omrStatus)}
                           </td>
                           <td style={{ padding: '14px 16px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#64748B', fontSize: '0.8125rem' }}>

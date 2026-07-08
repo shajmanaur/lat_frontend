@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Users, FileCheck, Clock, UserX, Search, Filter, ChevronDown, ChevronRight, FileText, AlertCircle, Calendar } from 'lucide-react';
 import { teacherOmrApi, omrApi, teachersApi } from '@/services/api';
 import toast from 'react-hot-toast';
+import { ShimmerTable, ShimmerCard } from '@/components/ui/Shimmer';
 
 const avatarColors = ['#6366F1', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#14B8A6', '#F97316'];
 
@@ -180,8 +181,16 @@ export default function OMREntryStatusPage() {
             if (!gradeId) continue;
 
             const studentsRes = await teacherOmrApi.getStudents(gradeId);
-            const studentsData = studentsRes?.response?.data || studentsRes?.response || studentsRes?.data || studentsRes;
-            const studentsList = Array.isArray(studentsData) ? studentsData : [];
+            let studentsList = [];
+            if (studentsRes?.data?.students) {
+              studentsList = studentsRes.data.students;
+            } else if (studentsRes?.response?.data?.students) {
+              studentsList = studentsRes.response.data.students;
+            } else if (Array.isArray(studentsRes?.data)) {
+              studentsList = studentsRes.data;
+            } else if (Array.isArray(studentsRes)) {
+              studentsList = studentsRes;
+            }
 
             grade.students_count = studentsList.length;
             grade.omr_completed = studentsList.filter((s: any) => {
@@ -237,16 +246,24 @@ export default function OMREntryStatusPage() {
   const fetchStudents = async (grade: any) => {
     try {
       setStudentsLoading(true);
-      const gradeId = grade.grade_id || grade.id;
+      const gradeId = grade.grade_id || grade.gradeId || grade.id;
       const studentsRes = await teacherOmrApi.getStudents(gradeId);
-      const studentsData = studentsRes?.response?.data || studentsRes?.data || [];
-      const gradeStudents = Array.isArray(studentsData) ? studentsData : [];
+      let gradeStudents = [];
+      if (studentsRes?.data?.students) {
+        gradeStudents = studentsRes.data.students;
+      } else if (studentsRes?.response?.data?.students) {
+        gradeStudents = studentsRes.response.data.students;
+      } else if (Array.isArray(studentsRes?.data)) {
+        gradeStudents = studentsRes.data;
+      } else if (Array.isArray(studentsRes)) {
+        gradeStudents = studentsRes;
+      }
 
       setStudents(gradeStudents.map((s: any) => ({
         ...s,
         student_id: s.student_id || s.id,
         full_name: s.full_name || s.name || s.student_name,
-        grade: grade.grade_name || grade.name || grade,
+        grade: grade.grade_name || grade.gradeName || grade.name || grade,
         omr_status: s.omr_status || s.status || 'Not Started',
       })));
     } catch (err) {
@@ -287,7 +304,7 @@ export default function OMREntryStatusPage() {
       const existing = rRes?.data || rRes?.response?.data || [];
       const loadedAnswers: Record<number, string> = {};
       existing.forEach((resp: any) => {
-        const qIndex = questionsData.findIndex((q: any) => q.id === resp.question_id);
+        const qIndex = questionsData.findIndex((q: any) => Number(q.id) === Number(resp.question_id));
         if (qIndex !== -1 && resp.selected_option) loadedAnswers[qIndex] = resp.selected_option;
       });
       setAnswers(loadedAnswers);
@@ -363,6 +380,15 @@ export default function OMREntryStatusPage() {
         <div style={{ background: 'white', borderRadius: '12px', padding: '20px', border: '1px solid #F1F5F9' }}>
           <h3 style={{ fontSize: '1rem', fontWeight: 600, color: '#1E293B', marginBottom: '16px' }}>My OMR Entry Summary</h3>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
+            {loading ? (
+              <>
+                <ShimmerCard />
+                <ShimmerCard />
+                <ShimmerCard />
+                <ShimmerCard />
+              </>
+            ) : (
+              <>
             <div style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '12px', background: '#F8FAFC', borderRadius: '10px' }}>
               <div style={{ width: '48px', height: '48px', borderRadius: '10px', background: '#EEF2FF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <FileText size={22} color="#6366F1" />
@@ -401,6 +427,8 @@ export default function OMREntryStatusPage() {
                 <div style={{ fontSize: '0.6875rem', color: '#0EA5E9', marginTop: '2px' }}>{summary.totalStudents ? ((summary.pendingOmr / summary.totalStudents) * 100).toFixed(2) : 0}%</div>
               </div>
             </div>
+            </>
+            )}
           </div>
         </div>
 
@@ -430,7 +458,7 @@ export default function OMREntryStatusPage() {
           </div>
 
           {loading ? (
-            <div style={{ textAlign: 'center', padding: '40px', color: '#64748B' }}>Loading grades...</div>
+            <ShimmerTable columns={8} rows={10} />
           ) : paginatedGrades.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '40px', color: '#64748B' }}>No grades found</div>
           ) : (
@@ -451,22 +479,22 @@ export default function OMREntryStatusPage() {
                   </thead>
                   <tbody>
                     {paginatedGrades.map((grade: any, idx: number) => {
-                      const gradeName = grade.grade_name || grade.name || '-';
+                      const gradeName = grade.grade_name || grade.gradeName || grade.name || '-';
                       const gradeColor = getGradeColor(gradeName);
                       const gradeShort = getGradeShort(gradeName);
-                      const testDate = grade.test_date || grade.date || grade.exam_date;
-                      const testTitle = grade.test_name || grade.test_title || `Grade ${gradeName} - Unit Test 1 (LAT)`;
+                      const testDate = grade.test_date || grade.date || grade.exam_date || grade.testDate;
+                      const testTitle = grade.test_name || grade.testName || grade.test_title || `Grade ${gradeName} - Unit Test 1 (LAT)`;
                       const sections = grade.sections || [];
-                      const studentsCount = grade.students_count || grade.student_count || grade.total_students || 0;
+                      const studentsCount = grade.students_count || grade.student_count || grade.students || grade.total_students || 0;
                       const completedCount = grade.omr_completed || grade.completed || 0;
                       const pendingCount = grade.pending || grade.pending_count || 0;
-                      const lastEntry = grade.last_omr_entry || grade.last_entry || null;
+                      const lastEntry = grade.last_omr_entry || grade.lastOmrEntry || grade.last_entry || null;
 
                       const completedPct = studentsCount > 0 ? ((completedCount / studentsCount) * 100).toFixed(1) : '0.0';
                       const pendingPct = studentsCount > 0 ? ((pendingCount / studentsCount) * 100).toFixed(1) : '0.0';
 
                       return (
-                        <tr key={grade.grade_id || grade.id || idx} style={{ borderBottom: '1px solid #F1F5F9' }}>
+                        <tr key={grade.grade_id || grade.gradeId || grade.id || idx} style={{ borderBottom: '1px solid #F1F5F9' }}>
                           <td style={{ padding: '16px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                               <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: `${gradeColor}20`, color: gradeColor, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.8125rem' }}>
@@ -554,7 +582,8 @@ export default function OMREntryStatusPage() {
   }
 
   // --- STUDENT LIST VIEW ---
-  const filteredStudents = students.filter(s => {
+  if (view === 'students') {
+    const filteredStudents = students.filter(s => {
     const q = searchQuery.toLowerCase();
     if (q) {
       const nameMatch = (s.full_name || '').toLowerCase().includes(q);
@@ -678,6 +707,16 @@ export default function OMREntryStatusPage() {
 
       {/* Stat Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '16px' }}>
+        {studentsLoading ? (
+          <>
+            <ShimmerCard />
+            <ShimmerCard />
+            <ShimmerCard />
+            <ShimmerCard />
+            <ShimmerCard />
+          </>
+        ) : (
+          <>
         <div style={{ background: 'white', borderRadius: '12px', padding: '14px 16px', border: '1px solid #F1F5F9' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
             <div style={{ width: '44px', height: '44px', borderRadius: '10px', background: '#EEF2FF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -737,6 +776,8 @@ export default function OMREntryStatusPage() {
             </div>
           </div>
         </div>
+        </>
+        )}
       </div>
 
       {/* Table */}
@@ -756,7 +797,7 @@ export default function OMREntryStatusPage() {
             </thead>
             <tbody>
               {studentsLoading ? (
-                <tr><td colSpan={7} style={{ textAlign: 'center', padding: '40px', color: '#64748B' }}>Loading students...</td></tr>
+                <tr><td colSpan={7} style={{ padding: 0 }}><ShimmerTable columns={7} rows={8} /></td></tr>
               ) : paginatedStudents.length === 0 ? (
                 <tr><td colSpan={7} style={{ textAlign: 'center', padding: '40px', color: '#64748B' }}>No students found</td></tr>
               ) : paginatedStudents.map((s, idx) => {
@@ -823,6 +864,7 @@ export default function OMREntryStatusPage() {
       </div>
     </div>
   );
+  }
 
   // --- OMR ENTRY VIEW ---
   return (

@@ -6,8 +6,15 @@ import {
   Globe, Building2, GraduationCap, ClipboardList
 } from 'lucide-react';
 import Link from 'next/link';
+import { ShimmerTable, ShimmerCard } from '@/components/ui/Shimmer';
 
 export default function OMREvaluationPage() {
+  const [loading, setLoading] = useState(true);
+
+  React.useEffect(() => {
+    const timer = setTimeout(() => setLoading(false), 800);
+    return () => clearTimeout(timer);
+  }, []);
   const [isFiltered, setIsFiltered] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('Overview');
@@ -129,8 +136,8 @@ export default function OMREvaluationPage() {
             There are no evaluation records to display.<br/>
             Please apply filters or ensure OMR entries are completed before running evaluation.
           </p>
-          <Link href="/omr-entry-status" className="btn btn-primary" style={{ padding: '10px 24px' }}>
-            <Play size={16} fill="currentColor" /> Go to OMR Entry Status
+          <Link href="/coordinator/omr-status" className="btn btn-primary" style={{ padding: '10px 24px' }}>
+            <Play size={16} fill="currentColor" /> Go to OMR Status
           </Link>
         </div>
       ) : (
@@ -138,6 +145,16 @@ export default function OMREvaluationPage() {
         <>
           {/* Stats */}
           <div className="grid grid-cols-5" style={{ gap: '12px' }}>
+            {loading ? (
+              <>
+                <ShimmerCard />
+                <ShimmerCard />
+                <ShimmerCard />
+                <ShimmerCard />
+                <ShimmerCard />
+              </>
+            ) : (
+              <>
             <div className="card flex items-center gap-3 py-3 px-3 border-l-4" style={{ padding: '12px 14px', borderLeftColor: 'var(--primary-purple)' }}>
               <div style={{ padding: '8px', background: '#EEF2FF', color: 'var(--primary-purple)', borderRadius: '50%' }}>
                 <Users size={18} />
@@ -192,6 +209,8 @@ export default function OMREvaluationPage() {
                 <div style={{ color: '#EF4444', fontSize: '0.625rem', fontWeight: 600 }}>0.11%</div>
               </div>
             </div>
+            </>
+            )}
           </div>
 
           {/* Table Section */}
@@ -217,7 +236,13 @@ export default function OMREvaluationPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {tableData.map((row) => (
+                  {loading ? (
+                    <tr>
+                      <td colSpan={10} style={{ padding: 0 }}>
+                        <ShimmerTable columns={10} rows={8} />
+                      </td>
+                    </tr>
+                  ) : tableData.map((row) => (
                     <tr key={row.id} style={{ borderBottom: '1px solid var(--border-light)' }}>
                       <td style={{ padding: '1rem', color: 'var(--text-muted)' }}>{row.id}</td>
                       <td style={{ padding: '1rem' }}>{row.region}</td>

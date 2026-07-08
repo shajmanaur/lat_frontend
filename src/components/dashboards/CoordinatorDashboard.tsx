@@ -5,6 +5,7 @@ import { Calendar, Users, GraduationCap, ClipboardCheck, Clock, ArrowRight, User
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import Link from 'next/link';
 import { dashboardApi, omrStudentsApi, teachersApi } from '@/services/api';
+import { ShimmerCard, ShimmerTable } from '@/components/ui/Shimmer';
 
 const GRADE_COLORS: Record<string, string> = {
   'Grade 3': '#4C35E6',
@@ -70,7 +71,24 @@ export default function CoordinatorDashboard({ roleName }: { roleName: string })
   }, []);
 
   if (loading) {
-    return <div style={{ padding: '40px', textAlign: 'center' }}>Loading dashboard data...</div>;
+    return (
+      <div className="flex flex-col gap-6">
+        {/* Header Shimmer */}
+        <div style={{ height: '60px', width: '30%', background: '#F1F5F9', borderRadius: '8px', animation: 'pulse 1.5s infinite' }}></div>
+        {/* Stat Cards */}
+        <div className="grid grid-cols-4 gap-4">
+          <ShimmerCard />
+          <ShimmerCard />
+          <ShimmerCard />
+          <ShimmerCard />
+        </div>
+        {/* Chart / List Shimmer */}
+        <div className="grid grid-cols-3 gap-4">
+          <div className="col-span-2"><ShimmerCard height="400px" /></div>
+          <div className="col-span-1"><ShimmerCard height="400px" /></div>
+        </div>
+      </div>
+    );
   }
 
   if (!stats) {
@@ -269,7 +287,7 @@ export default function CoordinatorDashboard({ roleName }: { roleName: string })
               })}
             </div>
           </div>
-          <Link href="/students" style={{
+          <Link href="/coordinator/students" style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             marginTop: '16px', padding: '12px 0', borderTop: '1px solid #F1F5F9',
             color: '#4C35E6', fontSize: '0.85rem', fontWeight: 600, textDecoration: 'none',
@@ -290,7 +308,7 @@ export default function CoordinatorDashboard({ roleName }: { roleName: string })
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
             <h3 style={{ fontSize: '1rem', fontWeight: 600, margin: 0, color: '#1E293B' }}>Recent OMR Results Added</h3>
-            <Link href="/omr-entry-status" style={{
+            <Link href="/coordinator/omr-status" style={{
               color: '#4C35E6', fontSize: '0.8rem', fontWeight: 600,
               display: 'flex', alignItems: 'center', gap: '4px', textDecoration: 'none',
             }}>
@@ -346,10 +364,10 @@ export default function CoordinatorDashboard({ roleName }: { roleName: string })
           <h3 style={{ fontSize: '1rem', fontWeight: 600, margin: '0 0 16px 0', color: '#1E293B' }}>Quick Actions</h3>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
             {[
-              { href: '/teachers', icon: UserPlus, color: '#4C35E6', bg: 'rgba(76,53,230,0.1)', title: 'Add Teacher', desc: 'Create a new teacher profile' },
-              { href: '/allocations', icon: UserCheck, color: '#3B82F6', bg: 'rgba(59,130,246,0.1)', title: 'Teacher Allocation', desc: 'Assign teachers to grade & section' },
-              { href: '/students', icon: GraduationCap, color: '#10B981', bg: 'rgba(16,185,129,0.1)', title: 'Add Student', desc: 'Register a new student' },
-              { href: '/omr-entry-status', icon: FilePlus, color: '#F59E0B', bg: 'rgba(245,158,11,0.1)', title: 'Add OMR Result', desc: 'Enter OMR assessment results' },
+              { href: '/coordinator/teachers', icon: UserPlus, color: '#4C35E6', bg: 'rgba(76,53,230,0.1)', title: 'Add Teacher', desc: 'Create a new teacher profile' },
+              { href: '/coordinator/allocations', icon: UserCheck, color: '#3B82F6', bg: 'rgba(59,130,246,0.1)', title: 'Teacher Allocation', desc: 'Assign teachers to grade & section' },
+              { href: '/coordinator/students', icon: GraduationCap, color: '#10B981', bg: 'rgba(16,185,129,0.1)', title: 'Add Student', desc: 'Register a new student' },
+              { href: '/admin/omr', icon: FilePlus, color: '#F59E0B', bg: 'rgba(245,158,11,0.1)', title: 'Add OMR Result', desc: 'Enter OMR assessment results' },
             ].map((action, i) => {
               const Icon = action.icon;
               return (
