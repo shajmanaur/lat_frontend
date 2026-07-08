@@ -1,0 +1,332 @@
+▲ Next.js 16.2.10 (Turbopack)
+- Local:         http://localhost:5200
+- Network:       http://0.0.0.0:5200
+- Environments: .env.local
+✓ Ready in 645ms
+⚠ Warning: Next.js inferred your workspace root, but it may not be correct.
+ We detected multiple lockfiles and selected the directory of C:\Users\USER37\package-lock.json as the root directory.
+ To silence this warning, set `turbopack.root` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
+   See https://nextjs.org/docs/app/api-reference/config/next-config-js/turbopack#root-directory for more information.
+ Detected additional lockfiles: 
+   * C:\Users\USER37\Downloads\LAT - KVS UI\package-lock.json
+
+
+ GET /omr-entry-status 200 in 801ms (next.js: 293ms, application-code: 507ms)
+ GET /omr-evaluation 200 in 95ms (next.js: 47ms, application-code: 48ms)
+ GET /omr-entry-status 200 in 31ms (next.js: 5ms, application-code: 25ms)
+ GET /omr-evaluation 200 in 39ms (next.js: 6ms, application-code: 33ms)
+ GET /coordinators 200 in 77ms (next.js: 45ms, application-code: 32ms)
+ GET /omr-evaluation 200 in 62ms (next.js: 14ms, application-code: 48ms)
+ GET / 200 in 111ms (next.js: 50ms, application-code: 61ms)
+ GET / 200 in 118ms (next.js: 4ms, application-code: 113ms)
+ GET /login 200 in 102ms (next.js: 42ms, application-code: 61ms)
+ GET /students 200 in 108ms (next.js: 37ms, application-code: 71ms)
+ GET /coordinators 200 in 87ms (next.js: 6ms, application-code: 81ms)
+ GET /teachers 200 in 87ms (next.js: 33ms, application-code: 54ms)
+ GET /omr 200 in 2.1s (next.js: 1911ms, application-code: 142ms)
+ GET /omr-entry-status 200 in 150ms (next.js: 11ms, application-code: 139ms)
+ GET /omr-status 200 in 1811ms (next.js: 1550ms, application-code: 261ms)
+ GET /omr-evaluation 200 in 103ms (next.js: 9ms, application-code: 95ms)
+ GET /allocations 200 in 183ms (next.js: 71ms, application-code: 112ms)
+ GET /omr-evaluation 200 in 59ms (next.js: 11ms, application-code: 48ms)
+ GET /omr-entry-status 200 in 37ms (next.js: 5ms, application-code: 32ms)
+ GET /coordinators 200 in 42ms (next.js: 7ms, application-code: 36ms)
+ GET /omr-entry-status 200 in 34ms (next.js: 7ms, application-code: 27ms)
+ GET /omr-evaluation 200 in 37ms (next.js: 6ms, application-code: 32ms)
+ GET / 200 in 22ms (next.js: 4ms, application-code: 18ms)
+ GET /national-report 404 in 87ms (next.js: 46ms, application-code: 42ms)
+ GET /national-report 404 in 53ms (next.js: 11ms, application-code: 42ms)
+ GET /coordinators 200 in 26ms (next.js: 5ms, application-code: 21ms)
+ GET /omr-entry-status 200 in 21ms (next.js: 4ms, application-code: 18ms)
+ GET /omr-evaluation 200 in 21ms (next.js: 4ms, application-code: 17ms)
+ GET /login 200 in 38ms (next.js: 4ms, application-code: 34ms)
+ GET / 200 in 26ms (next.js: 4ms, application-code: 22ms)
+ GET /teachers 200 in 22ms (next.js: 4ms, application-code: 18ms)
+ GET /allocations 200 in 20ms (next.js: 4ms, application-code: 16ms)
+ GET /allocations 200 in 410ms (next.js: 158ms, application-code: 251ms)
+ GET /allocations 200 in 222ms (next.js: 120ms, application-code: 103ms)
+ GET /allocations 200 in 321ms (next.js: 153ms, application-code: 168ms)
+ GET /allocations 200 in 242ms (next.js: 116ms, application-code: 126ms)
+ GET /allocations 200 in 300ms (next.js: 140ms, application-code: 160ms)
+ GET /allocations 200 in 349ms (next.js: 199ms, application-code: 150ms)
+ GET /allocations 200 in 90ms (next.js: 12ms, application-code: 78ms)
+ GET /allocations 200 in 143ms (next.js: 19ms, application-code: 124ms)
+ GET /allocations 200 in 233ms (next.js: 89ms, application-code: 145ms)
+ GET /allocations 200 in 151ms (next.js: 22ms, application-code: 129ms)
+ GET /allocations 200 in 54ms (next.js: 7ms, application-code: 48ms)
+ GET /coordinators 200 in 316ms (next.js: 81ms, application-code: 234ms)
+ GET /allocations 200 in 116ms (next.js: 8ms, application-code: 108ms)
+✓ Compiled in 58ms
+ GET /allocations 200 in 281ms (next.js: 134ms, application-code: 147ms)
+ GET /allocations 200 in 142ms (next.js: 4ms, application-code: 138ms)
+ GET /teachers 200 in 46ms (next.js: 20ms, application-code: 26ms)
+ GET /allocations 200 in 31ms (next.js: 6ms, application-code: 25ms)
+ GET /teachers 200 in 28ms (next.js: 4ms, application-code: 24ms)
+ GET /allocations 200 in 28ms (next.js: 6ms, application-code: 22ms)
+ GET /allocations 200 in 154ms (next.js: 77ms, application-code: 77ms)
+✓ Compiled in 53ms
+ GET /allocations 200 in 375ms (next.js: 192ms, application-code: 183ms)
+ GET /teachers 200 in 95ms (next.js: 34ms, application-code: 61ms)
+ GET /allocations 200 in 38ms (next.js: 6ms, application-code: 32ms)
+✓ Compiled in 82ms
+ GET /allocations 200 in 291ms (next.js: 137ms, application-code: 153ms)
+ GET /teachers 200 in 447ms (next.js: 129ms, application-code: 317ms)
+ GET /coordinators 200 in 549ms (next.js: 159ms, application-code: 390ms)
+ GET /allocations 200 in 111ms (next.js: 8ms, application-code: 103ms)
+✓ Compiled in 46ms
+ GET /allocations 200 in 253ms (next.js: 130ms, application-code: 123ms)
+ GET /allocations 200 in 151ms (next.js: 4ms, application-code: 147ms)
+✓ Compiled in 45ms
+ GET /allocations 200 in 280ms (next.js: 132ms, application-code: 147ms)
+ GET /allocations 200 in 142ms (next.js: 4ms, application-code: 139ms)
+✓ Compiled in 44ms
+ GET /allocations 200 in 256ms (next.js: 136ms, application-code: 119ms)
+✓ Compiled in 29ms
+ GET /allocations 200 in 175ms (next.js: 108ms, application-code: 67ms)
+ GET /allocations 200 in 165ms (next.js: 4ms, application-code: 161ms)
+✓ Compiled in 45ms
+ GET /allocations 200 in 243ms (next.js: 143ms, application-code: 100ms)
+✓ Compiled in 26ms
+ GET /allocations 200 in 229ms (next.js: 142ms, application-code: 87ms)
+ GET /allocations 200 in 227ms (next.js: 5ms, application-code: 222ms)
+✓ Compiled in 53ms
+ GET /allocations 200 in 193ms (next.js: 101ms, application-code: 92ms)
+✓ Compiled in 30ms
+ GET /allocations 200 in 166ms (next.js: 103ms, application-code: 63ms)
+✓ Compiled in 34ms
+ GET /allocations 200 in 232ms (next.js: 126ms, application-code: 106ms)
+✓ Compiled in 28ms
+ GET /allocations 200 in 236ms (next.js: 149ms, application-code: 87ms)
+ GET /allocations 200 in 211ms (next.js: 5ms, application-code: 206ms)
+✓ Compiled in 75ms
+ GET /allocations 200 in 204ms (next.js: 115ms, application-code: 90ms)
+[browser] Uncaught ReferenceError: selectedGrade is not defined
+    at TeacherAllocation (../LAT - KVS UI/src/app/(dashboard)/allocations/page.tsx:93:7)
+  91 |       setModalSectionOptions([]);
+  92 |     }
+> 93 |   }, [selectedGrade]);
+     |       ^
+  94 |
+  95 |   const fetchAllocations = async () => {
+  96 |     try {
+✓ Compiled in 111ms
+⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ GET /allocations 200 in 1340ms (next.js: 276ms, application-code: 1063ms)
+[browser] Uncaught ReferenceError: selectedGrade is not defined
+    at TeacherAllocation (../LAT - KVS UI/src/app/(dashboard)/allocations/page.tsx:120:7)
+  118 |       setModalSectionOptions([]);
+  119 |     }
+> 120 |   }, [selectedGrade]);
+      |       ^
+  121 |
+  122 |   const fetchAllocations = async () => {
+  123 |     try {
+✓ Compiled in 126ms
+⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ GET /allocations 200 in 1857ms (next.js: 477ms, application-code: 1380ms)
+✓ Compiled in 259ms
+ GET /allocations 200 in 831ms (next.js: 525ms, application-code: 305ms)
+✓ Compiled in 529ms
+ GET /allocations 200 in 358ms (next.js: 244ms, application-code: 114ms)
+ GET /allocations 200 in 40ms (next.js: 7ms, application-code: 33ms)
+ GET /allocations 200 in 49ms (next.js: 7ms, application-code: 42ms)
+✓ Compiled in 59ms
+ GET /allocations 200 in 316ms (next.js: 171ms, application-code: 144ms)
+ GET /allocations 200 in 202ms (next.js: 5ms, application-code: 197ms)
+✓ Compiled in 398ms
+ GET /allocations 200 in 342ms (next.js: 196ms, application-code: 147ms)
+✓ Compiled in 213ms
+ GET /allocations 200 in 269ms (next.js: 135ms, application-code: 134ms)
+ GET /allocations 200 in 102ms (next.js: 21ms, application-code: 82ms)
+ GET /allocations 200 in 51ms (next.js: 6ms, application-code: 45ms)
+ GET /allocations 200 in 230ms (next.js: 5ms, application-code: 225ms)
+✓ Compiled in 67ms
+ GET /allocations 200 in 235ms (next.js: 136ms, application-code: 99ms)
+ GET /allocations 200 in 162ms (next.js: 5ms, application-code: 157ms)
+ GET /teachers 200 in 96ms (next.js: 38ms, application-code: 57ms)
+✓ Compiled in 52ms
+ GET /teachers 200 in 243ms (next.js: 133ms, application-code: 110ms)
+ GET /teachers 200 in 229ms (next.js: 6ms, application-code: 223ms)
+ GET /students 200 in 66ms (next.js: 27ms, application-code: 39ms)
+✓ Compiled in 329ms
+ GET /students 200 in 262ms (next.js: 138ms, application-code: 124ms)
+ GET /students 200 in 175ms (next.js: 4ms, application-code: 171ms)
+✓ Compiled in 40ms
+ GET /students 200 in 250ms (next.js: 129ms, application-code: 121ms)
+ GET /allocations 200 in 63ms (next.js: 24ms, application-code: 39ms)
+ GET /teachers 200 in 55ms (next.js: 23ms, application-code: 32ms)
+ GET /students 200 in 207ms (next.js: 5ms, application-code: 202ms)
+ GET /allocations 200 in 48ms (next.js: 9ms, application-code: 39ms)
+ GET /omr 200 in 70ms (next.js: 29ms, application-code: 41ms)
+ GET /omr 200 in 75ms (next.js: 8ms, application-code: 67ms)
+ GET /students 200 in 24ms (next.js: 4ms, application-code: 20ms)
+ GET /students 200 in 350ms (next.js: 107ms, application-code: 243ms)
+ GET /students 200 in 327ms (next.js: 126ms, application-code: 201ms)
+ GET /students 200 in 349ms (next.js: 173ms, application-code: 176ms)
+ GET /students 200 in 184ms (next.js: 90ms, application-code: 94ms)
+ GET /students 200 in 226ms (next.js: 111ms, application-code: 115ms)
+ GET /allocations 200 in 461ms (next.js: 269ms, application-code: 193ms)
+✓ Compiled in 1304ms
+✓ Compiled in 0ms
+ GET /allocations 200 in 2.9s (next.js: 1448ms, application-code: 1489ms)
+ GET /allocations 200 in 3.4s (next.js: 150ms, application-code: 3.3s)
+ GET /allocations 200 in 2.8s (next.js: 112ms, application-code: 2.7s)
+ GET /allocations 200 in 2.8s (next.js: 695ms, application-code: 2.1s)
+ GET /allocations 200 in 2.4s (next.js: 301ms, application-code: 2.1s)
+ GET /allocations 200 in 2.4s (next.js: 704ms, application-code: 1743ms)
+ GET /allocations 200 in 2.5s (next.js: 1469ms, application-code: 983ms)
+ GET /allocations 200 in 849ms (next.js: 33ms, application-code: 817ms)
+ GET /allocations 200 in 698ms (next.js: 24ms, application-code: 674ms)
+ GET /allocations 200 in 579ms (next.js: 129ms, application-code: 450ms)
+ GET /allocations 200 in 761ms (next.js: 269ms, application-code: 491ms)
+ GET /allocations 200 in 202ms (next.js: 59ms, application-code: 143ms)
+ GET /allocations 200 in 463ms (next.js: 220ms, application-code: 243ms)
+✓ Compiled in 48ms
+ GET /allocations 200 in 237ms (next.js: 94ms, application-code: 143ms)
+ GET /allocations 200 in 268ms (next.js: 132ms, application-code: 136ms)
+ GET / 200 in 771ms (next.js: 142ms, application-code: 629ms)
+ GET /coordinators 200 in 693ms (next.js: 202ms, application-code: 491ms)
+ GET /teachers 200 in 546ms (next.js: 171ms, application-code: 375ms)
+ GET /allocations 200 in 137ms (next.js: 10ms, application-code: 127ms)
+ GET /students 200 in 137ms (next.js: 35ms, application-code: 101ms)
+ GET /omr 200 in 515ms (next.js: 168ms, application-code: 347ms)
+ GET /omr-status 200 in 738ms (next.js: 233ms, application-code: 505ms)
+ GET /omr-entry-status 200 in 521ms (next.js: 178ms, application-code: 344ms)
+ GET /omr-evaluation 200 in 530ms (next.js: 175ms, application-code: 355ms)
+ GET /students 200 in 36ms (next.js: 4ms, application-code: 32ms)
+✓ Compiled in 610ms
+ GET /students 200 in 406ms (next.js: 231ms, application-code: 175ms)
+[browser] Failed to fetch students TypeError: (s.status || "").toLowerCase is not a function
+    at eval (../LAT - KVS UI/src/app/(dashboard)/students/page.tsx:70:70)
+    at Array.filter (<anonymous>)
+    at fetchStudents (../LAT - KVS UI/src/app/(dashboard)/students/page.tsx:70:34)
+  68 | ...al);
+  69 | ...
+> 70 | ...ntList.filter((s: any) => (s.status || '').toLowerCase() === 'active').length;
+     |                                               ^
+  71 | ...dentList.filter((s: any) => (s.status || '').toLowerCase() === 'inactive').length;
+  72 | ...et(studentList.map((s: any) => {
+  73 | ... (../LAT - KVS UI/src/app/(dashboard)
+ GET /students 200 in 248ms (next.js: 8ms, application-code: 241ms)
+ GET /students 200 in 147ms (next.js: 25ms, application-code: 122ms)
+ GET /students 200 in 246ms (next.js: 7ms, application-code: 239ms)
+✓ Compiled in 45ms
+ GET /students 200 in 314ms (next.js: 164ms, application-code: 151ms)
+✓ Compiled in 151ms
+ GET /students 200 in 1118ms (next.js: 717ms, application-code: 401ms)
+✓ Compiled in 58ms
+ GET /students 200 in 510ms (next.js: 284ms, application-code: 226ms)
+ GET /students 200 in 357ms (next.js: 6ms, application-code: 351ms)
+ GET /students 200 in 50ms (next.js: 4ms, application-code: 46ms)
+ GET /admin-students 404 in 66ms (next.js: 32ms, application-code: 33ms)
+ GET /admin-students 404 in 70ms (next.js: 9ms, application-code: 60ms)
+ GET /admin-students 404 in 37ms (next.js: 12ms, application-code: 25ms)
+ GET /admin-students 404 in 63ms (next.js: 13ms, application-code: 51ms)
+ GET /admin-students 404 in 58ms (next.js: 11ms, application-code: 47ms)
+ GET /allocations 200 in 56ms (next.js: 24ms, application-code: 31ms)
+ GET /omr 200 in 65ms (next.js: 31ms, application-code: 35ms)
+ GET /admin-students 404 in 52ms (next.js: 14ms, application-code: 38ms)
+ GET /admin-students 404 in 112ms (next.js: 15ms, application-code: 97ms)
+ GET / 200 in 84ms (next.js: 42ms, application-code: 42ms)
+ GET /admin-students 404 in 44ms (next.js: 11ms, application-code: 33ms)
+ GET /admin-students 404 in 93ms (next.js: 14ms, application-code: 79ms)
+ GET / 200 in 507ms (next.js: 62ms, application-code: 445ms)
+ GET /admin-students 404 in 61ms (next.js: 14ms, application-code: 47ms)
+ GET /admin-students 404 in 118ms (next.js: 16ms, application-code: 102ms)
+ GET / 200 in 66ms (next.js: 8ms, application-code: 58ms)
+ GET /admin-students 404 in 39ms (next.js: 8ms, application-code: 31ms)
+ GET /admin-students 404 in 63ms (next.js: 14ms, application-code: 50ms)
+ GET /omr 200 in 37ms (next.js: 14ms, application-code: 24ms)
+✓ Compiled in 493ms
+ GET /omr 200 in 503ms (next.js: 273ms, application-code: 231ms)
+ GET /omr 200 in 103ms (next.js: 31ms, application-code: 72ms)
+ GET /omr 200 in 154ms (next.js: 18ms, application-code: 137ms)
+ GET /omr 200 in 204ms (next.js: 5ms, application-code: 199ms)
+ GET /students 200 in 77ms (next.js: 33ms, application-code: 44ms)
+ GET /omr 200 in 44ms (next.js: 5ms, application-code: 39ms)
+ GET /omr 200 in 60ms (next.js: 5ms, application-code: 55ms)
+ GET /omr 200 in 69ms (next.js: 6ms, application-code: 63ms)
+ GET /admin-students 404 in 97ms (next.js: 32ms, application-code: 65ms)
+ GET /omr 200 in 39ms (next.js: 6ms, application-code: 33ms)
+ GET /admin-students 404 in 22ms (next.js: 6ms, application-code: 16ms)
+ GET /admin-students 404 in 43ms (next.js: 7ms, application-code: 37ms)
+ GET /omr 200 in 38ms (next.js: 5ms, application-code: 33ms)
+ GET /omr 200 in 15ms (next.js: 6ms, application-code: 9ms)
+ GET /omr 200 in 30ms (next.js: 4ms, application-code: 25ms)
+ GET /teachers 200 in 45ms (next.js: 23ms, application-code: 23ms)
+ GET /omr 200 in 21ms (next.js: 4ms, application-code: 16ms)
+ GET / 200 in 45ms (next.js: 22ms, application-code: 24ms)
+ GET /omr 200 in 33ms (next.js: 6ms, application-code: 27ms)
+ GET /teachers 200 in 26ms (next.js: 6ms, application-code: 21ms)
+ GET /login 200 in 97ms (next.js: 28ms, application-code: 69ms)
+ GET /login 200 in 46ms (next.js: 9ms, application-code: 37ms)
+ GET /login 200 in 49ms (next.js: 12ms, application-code: 37ms)
+ GET /login 200 in 26ms (next.js: 7ms, application-code: 19ms)
+ GET /omr 200 in 29ms (next.js: 8ms, application-code: 21ms)
+ GET /login 200 in 38ms (next.js: 6ms, application-code: 32ms)
+ GET /login 200 in 33ms (next.js: 7ms, application-code: 27ms)
+ GET /login 200 in 35ms (next.js: 6ms, application-code: 29ms)
+ GET / 200 in 153ms (next.js: 7ms, application-code: 146ms)
+ GET /login 200 in 23ms (next.js: 5ms, application-code: 18ms)
+ GET / 200 in 22ms (next.js: 4ms, application-code: 19ms)
+ GET /teachers 200 in 20ms (next.js: 4ms, application-code: 16ms)
+ GET /allocations 200 in 41ms (next.js: 20ms, application-code: 21ms)
+ GET /admin-students 404 in 22ms (next.js: 6ms, application-code: 16ms)
+ GET /admin-students 404 in 42ms (next.js: 7ms, application-code: 35ms)
+[browser] Uncaught Error: Module [project]/Downloads/LAT - KVS UI/node_modules/lucide-react/dist/esm/icons/x.mjs [app-client] (ecmascript) <export default as X> was instantiated because it was required from module [project]/Downloads/LAT - KVS UI/src/app/(dashboard)/allocations/page.tsx [app-client] (ecmascript), but the module factory is not available.
+This is often caused by a stale browser cache, misconfigured Cache-Control headers, or a service worker serving outdated responses.
+To fix this, make sure your Cache-Control headers allow revalidation of chunks and review your service worker configuration. As an immediate workaround, try hard-reloading the page, clearing the browser cache, or unregistering any service workers.
+    at module evaluation (../LAT - KVS UI/src/app/(dashboard)/allocations/page.tsx:4:1)
+  2 |
+  3 | import React, { useState, useEffect } from 'react';
+> 4 | import { Users, UserCheck, Clock, Layers, Search, Filter, RotateCcw, Plus, Edit, MoreVertic...
+    | ^
+  5 | import axios from 'axios';
+  6 | import toast, { Toaster } from 'react-hot-toast';
+  7 |
+ GET /allocations 200 in 53ms (next.js: 8ms, application-code: 45ms)
+ GET /allocations 200 in 43ms (next.js: 6ms, application-code: 36ms)
+ GET /allocations 200 in 56ms (next.js: 5ms, application-code: 51ms)
+ GET /allocations 200 in 87ms (next.js: 6ms, application-code: 81ms)
+ GET /allocations 200 in 53ms (next.js: 5ms, application-code: 48ms)
+ GET /allocations 200 in 62ms (next.js: 7ms, application-code: 55ms)
+ GET /allocations 200 in 177ms (next.js: 36ms, application-code: 140ms)
+ GET /allocations 200 in 100ms (next.js: 10ms, application-code: 90ms)
+ GET /allocations 200 in 160ms (next.js: 8ms, application-code: 153ms)
+ GET /allocations 200 in 90ms (next.js: 10ms, application-code: 80ms)
+ GET /allocations 200 in 93ms (next.js: 7ms, application-code: 86ms)
+ GET /allocations 200 in 108ms (next.js: 7ms, application-code: 101ms)
+ GET /allocations 200 in 205ms (next.js: 7ms, application-code: 198ms)
+ GET /allocations 200 in 117ms (next.js: 11ms, application-code: 106ms)
+ GET /allocations 200 in 231ms (next.js: 6ms, application-code: 225ms)
+ GET /allocations 200 in 139ms (next.js: 13ms, application-code: 126ms)
+ GET /allocations 200 in 104ms (next.js: 10ms, application-code: 94ms)
+ GET /allocations 200 in 90ms (next.js: 7ms, application-code: 83ms)
+ GET /allocations 200 in 76ms (next.js: 9ms, application-code: 67ms)
+ GET /allocations 200 in 70ms (next.js: 9ms, application-code: 61ms)
+ GET /allocations 200 in 74ms (next.js: 6ms, application-code: 68ms)
+ GET /allocations 200 in 82ms (next.js: 9ms, application-code: 74ms)
+ GET /allocations 200 in 105ms (next.js: 8ms, application-code: 96ms)
+ GET /allocations 200 in 69ms (next.js: 8ms, application-code: 61ms)
+ GET /allocations 200 in 61ms (next.js: 7ms, application-code: 54ms)
+ GET /allocations 200 in 71ms (next.js: 9ms, application-code: 61ms)
+ GET /allocations 200 in 83ms (next.js: 9ms, application-code: 74ms)
+ GET /allocations 200 in 75ms (next.js: 9ms, application-code: 66ms)
+ GET /allocations 200 in 66ms (next.js: 8ms, application-code: 57ms)
+ GET /allocations 200 in 78ms (next.js: 7ms, application-code: 71ms)
+ GET /allocations 200 in 66ms (next.js: 8ms, application-code: 58ms)
+ GET /allocations 200 in 67ms (next.js: 9ms, application-code: 58ms)
+ GET /allocations 200 in 70ms (next.js: 9ms, application-code: 62ms)
+ GET /allocations 200 in 61ms (next.js: 6ms, application-code: 55ms)
+ GET /students 200 in 22ms (next.js: 5ms, application-code: 17ms)
+ GET /omr 200 in 69ms (next.js: 19ms, application-code: 50ms)
+ GET /students 200 in 44ms (next.js: 5ms, application-code: 39ms)
+ GET /omr 200 in 22ms (next.js: 4ms, application-code: 17ms)
+ GET /omr 200 in 532ms (next.js: 207ms, application-code: 325ms)
+ GET /omr 200 in 240ms (next.js: 33ms, application-code: 208ms)
+ GET /omr 200 in 81ms (next.js: 11ms, application-code: 70ms)
+ GET /omr-entry-status 200 in 321ms (next.js: 93ms, application-code: 228ms)
+ GET /teachers 200 in 97ms (next.js: 37ms, application-code: 60ms)
+ GET /teachers 200 in 66ms (next.js: 6ms, application-code: 60ms)
+✓ Compiled in 87ms
+ GET /teachers 200 in 253ms (next.js: 154ms, application-code: 99ms)

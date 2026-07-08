@@ -1,446 +1,513 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Users, Search, Filter, RotateCcw, Plus, Upload, MoreVertical, Edit, Download, CheckCircle, AlertCircle } from 'lucide-react';
-import axios from 'axios';
+import { Search, Filter, Users, UserCheck, UserX, Building2, Calendar, ChevronDown, Eye, Edit3, MoreVertical, RefreshCw } from 'lucide-react';
+import { studentsApi, regionsApi, schoolsApi, dashboardApi, formatGradeName } from '@/services/api';
 import toast, { Toaster } from 'react-hot-toast';
 
-export default function StudentList() {
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [showBulkUploadModal, setShowBulkUploadModal] = useState(false);
-  const [uploadState, setUploadState] = useState<'empty' | 'uploading' | 'success' | 'error'>('empty');
+const avatarColors = ['#6366F1', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#14B8A6', '#F97316'];
 
+function getInitials(name: string) {
+  return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+}
+
+function getAvatarColor(name: string) {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  return avatarColors[Math.abs(hash) % avatarColors.length];
+}
+
+export default function StudentsPage() {
   const [students, setStudents] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  
-  // Search & Filters
+  const [loading, setLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [totalStudents, setTotalStudents] = useState(0);
+  const [selectedGrade, setSelectedGrade] = useState('');
+  const [selectedSection, setSelectedSection] = useState('');
+  const [selectedStatus, setSelectedStatus] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
-  const [gradeFilter, setGradeFilter] = useState('All Grades');
-  const [sectionFilter, setSectionFilter] = useState('All Sections');
-  const [gradeOptions, setGradeOptions] = useState<any[]>([]);
-  const [sectionOptions, setSectionOptions] = useState<any[]>([]);
+  const [activeDropdown, setActiveDropdown] = useState<number | null>(null);
 
-  // Pagination
-  const [page, setPage] = useState(1);
-  const [total, setTotal] = useState(0);
-  const limit = 10;
-
-  // Form State
-  const [formData, setFormData] = useState({
-    student_id: null as number | null,
-    full_name: '',
-    apaar_id: '',
-    gender: '',
-    grade: '',
-    section: ''
+  const [stats, setStats] = useState({
+    totalStudents: 0,
+    activeStudents: 0,
+    inactiveStudents: 0,
+    gradesCovered: 0,
   });
-  const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    fetchGrades();
-  }, []);
-
-  useEffect(() => {
-    fetchStudents();
-  }, [page]);
-
-  useEffect(() => {
-    if (gradeFilter !== 'All Grades') {
-      fetchSections(gradeFilter);
-    } else {
-      setSectionOptions([]);
-      setSectionFilter('All Sections');
-    }
-  }, [gradeFilter]);
-
-  const fetchGrades = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api/v1';
-      const res = await axios.get(`${apiUrl}/teachers/meta/grades`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      let fetchedGrades = [];
-      if (res.data?.response?.data) fetchedGrades = res.data.response.data;
-      else if (res.data?.data) fetchedGrades = res.data.data;
-      
-      // Filter to Grade 3, 6, 9 as requested
-      const allowedGrades = ['Grade 3', 'Grade 6', 'Grade 9', 'III', 'VI', 'IX', '3', '6', '9'];
-      setGradeOptions(fetchedGrades.filter((g: any) => allowedGrades.includes(g.grade_name)));
-    } catch (err) {
-      console.error('Failed to fetch grades', err);
-    }
-  };
-
-  const fetchSections = async (grade: string) => {
-    try {
-      const token = localStorage.getItem('token');
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api/v1';
-      const res = await axios.get(`${apiUrl}/teachers/meta/sections?grade=${grade}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (res.data?.response?.data) setSectionOptions(res.data.response.data);
-      else if (res.data?.data) setSectionOptions(res.data.data);
-    } catch (err) {
-      console.error('Failed to fetch sections', err);
-    }
-  };
+  const [error, setError] = useState('');
 
   const fetchStudents = async () => {
+    setLoading(true);
+    setError('');
     try {
-      setLoading(true);
-      const token = localStorage.getItem('token');
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api/v1';
-      const res = await axios.get(`${apiUrl}/students?page=${page}&limit=${limit}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (res.data?.response) {
-        const payload = res.data.response.data || res.data.response;
-        setStudents(payload.data || payload || []);
-        if (res.data.response.meta) {
-          setTotal(res.data.response.meta.total);
-        } else if (payload.meta) {
-          setTotal(payload.meta.total);
+      const res = await studentsApi.getStudents(currentPage, itemsPerPage);
+      let studentList: any[] = [];
+      let total = 0;
+      if (res.status === true && res.response) {
+        const resp = res.response;
+        if (resp.meta) {
+          studentList = Array.isArray(resp.data) ? resp.data : [];
+          total = resp.meta.total || 0;
+        } else if (Array.isArray(resp)) {
+          studentList = resp;
+          total = resp.length;
+        } else {
+          studentList = resp.data || resp.students || resp.items || [];
+          total = resp.total || resp.count || studentList.length;
         }
+      } else if (Array.isArray(res)) {
+        studentList = res;
+        total = res.length;
+      } else if (res.data) {
+        studentList = Array.isArray(res.data) ? res.data : [];
+        total = res.total || studentList.length;
       }
-    } catch (err) {
+      setStudents(studentList);
+      setTotalStudents(total);
+
+      const active = studentList.filter((s: any) => String(s.status || '').toLowerCase() === 'active').length;
+      const inactive = studentList.filter((s: any) => String(s.status || '').toLowerCase() === 'inactive').length;
+      const grades = new Set(studentList.map((s: any) => {
+        const g = s.grade;
+        if (typeof g === 'object' && g) return g.grade_id || g.grade_name;
+        return g;
+      }).filter(Boolean));
+
+      setStats({
+        totalStudents: total,
+        activeStudents: active,
+        inactiveStudents: inactive,
+        gradesCovered: grades.size || 3,
+      });
+    } catch (err: any) {
       console.error('Failed to fetch students', err);
-      toast.error('Failed to load students');
+      setError(err.response?.data?.message || err.message || 'Failed to fetch students');
+      setStudents([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleAddOrEditStudent = async () => {
-    if (!formData.full_name || !formData.gender || !formData.grade || !formData.section) {
-      toast.error('Please fill all required fields');
-      return;
+  useEffect(() => {
+    fetchStudents();
+  }, [currentPage, itemsPerPage]);
+
+  const filteredStudents = students.filter((s: any) => {
+    const q = searchQuery.toLowerCase();
+    if (q) {
+      const nameMatch = (s.name || s.student_name || s.full_name || '').toLowerCase().includes(q);
+      const apaarMatch = (s.apaarId || s.apaar_id || '').toLowerCase().includes(q);
+      if (!nameMatch && !apaarMatch) return false;
     }
-    setSubmitting(true);
-    try {
-      const token = localStorage.getItem('token');
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api/v1';
-      
-      if (formData.student_id) {
-        // Edit mode
-        await axios.put(`${apiUrl}/students/${formData.student_id}`, formData, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        toast.success('Student updated successfully');
-      } else {
-        // Create mode
-        await axios.post(`${apiUrl}/students`, formData, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        toast.success('Student created successfully');
-      }
-
-      setShowAddModal(false);
-      setFormData({ student_id: null, full_name: '', apaar_id: '', gender: '', grade: '', section: '' });
-      fetchStudents();
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || err.response?.data?.error || 'Failed to save student');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleEditClick = (student: any) => {
-    setFormData({
-      student_id: student.student_id,
-      full_name: student.full_name,
-      apaar_id: student.apaar_id || '',
-      gender: student.gender === 'm' ? 'Male' : student.gender === 'f' ? 'Female' : 'Other',
-      grade: student.grade,
-      section: student.section
-    });
-    setShowAddModal(true);
-  };
-
-  const filteredStudents = students.filter(s => {
-    const matchesSearch = !searchQuery || s.full_name.toLowerCase().includes(searchQuery.toLowerCase()) || (s.apaar_id && s.apaar_id.includes(searchQuery));
-    const matchesGrade = gradeFilter === 'All Grades' || s.grade === gradeFilter;
-    const matchesSection = sectionFilter === 'All Sections' || s.section === sectionFilter;
-    return matchesSearch && matchesGrade && matchesSection;
+    if (selectedGrade && String(s.grade) !== selectedGrade) return false;
+    if (selectedSection && s.section !== selectedSection) return false;
+    if (selectedStatus && String(s.status || '').toLowerCase() !== selectedStatus.toLowerCase()) return false;
+    return true;
   });
 
+  const totalPages = Math.ceil(totalStudents / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = Math.min(startIndex + itemsPerPage, totalStudents);
+
+  const activePercent = stats.totalStudents > 0 ? ((stats.activeStudents / stats.totalStudents) * 100).toFixed(1) : '0.0';
+  const inactivePercent = stats.totalStudents > 0 ? ((stats.inactiveStudents / stats.totalStudents) * 100).toFixed(1) : '0.0';
+
   return (
-    <div className="flex flex-col gap-6 relative">
-      
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       <Toaster position="top-right" />
-      {/* Header Section */}
-      <div className="flex items-center justify-between">
+
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
         <div>
-          <h1 style={{ fontSize: '1.25rem', fontWeight: 700 }}>Student List</h1>
-          <p className="text-muted text-sm mt-1">Manage and view all registered students in your school.</p>
+          <h1 style={{ fontSize: '1.5rem', fontWeight: 700, margin: 0, color: '#1E293B' }}>Student List</h1>
+          <p style={{ color: '#64748B', fontSize: '0.875rem', marginTop: '4px' }}>View and manage all students.</p>
         </div>
-        <div className="flex items-center gap-3">
-          <button onClick={() => setShowBulkUploadModal(true)} className="btn btn-outline" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', background: 'white' }}>
-            <Upload size={16} />
-            Bulk Upload
-          </button>
-          <button onClick={() => {
-            setFormData({ student_id: null, full_name: '', apaar_id: '', gender: '', grade: '', section: '' });
-            setShowAddModal(true);
-          }} className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px' }}>
-            <Plus size={16} />
-            Add Student
-          </button>
+        <button style={{
+          display: 'flex', alignItems: 'center', gap: '8px',
+          padding: '10px 20px', borderRadius: '10px',
+          background: '#6366F1', color: 'white', fontSize: '0.875rem', fontWeight: 600,
+          border: 'none', cursor: 'pointer',
+        }}>
+          + Add Student
+        </button>
+      </div>
+
+      {/* Stat Cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '16px' }}>
+        <div style={{ background: 'white', borderRadius: '12px', padding: '14px 16px', border: '1px solid #F1F5F9', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <div style={{ width: '44px', height: '44px', borderRadius: '10px', background: '#EEF2FF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Users size={20} color="#6366F1" />
+            </div>
+            <div>
+              <div style={{ fontSize: '0.75rem', color: '#64748B', fontWeight: 500 }}>Total Students</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#1E293B', lineHeight: 1.2 }}>{stats.totalStudents.toLocaleString('en-IN')}</div>
+              <div style={{ fontSize: '0.6875rem', color: '#94A3B8', marginTop: '2px' }}>Across all grades</div>
+            </div>
+          </div>
+        </div>
+
+        <div style={{ background: 'white', borderRadius: '12px', padding: '14px 16px', border: '1px solid #F1F5F9', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <div style={{ width: '44px', height: '44px', borderRadius: '10px', background: '#D1FAE5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <UserCheck size={20} color="#10B981" />
+            </div>
+            <div>
+              <div style={{ fontSize: '0.75rem', color: '#64748B', fontWeight: 500 }}>Active Students</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#1E293B', lineHeight: 1.2 }}>{stats.activeStudents}</div>
+              <div style={{ fontSize: '0.6875rem', color: '#10B981', marginTop: '2px' }}>{activePercent}% of total</div>
+            </div>
+          </div>
+        </div>
+
+        <div style={{ background: 'white', borderRadius: '12px', padding: '14px 16px', border: '1px solid #F1F5F9', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <div style={{ width: '44px', height: '44px', borderRadius: '10px', background: '#FEF2F2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <UserX size={20} color="#EF4444" />
+            </div>
+            <div>
+              <div style={{ fontSize: '0.75rem', color: '#64748B', fontWeight: 500 }}>Inactive Students</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#1E293B', lineHeight: 1.2 }}>{stats.inactiveStudents}</div>
+              <div style={{ fontSize: '0.6875rem', color: '#EF4444', marginTop: '2px' }}>{inactivePercent}% of total</div>
+            </div>
+          </div>
+        </div>
+
+        <div style={{ background: 'white', borderRadius: '12px', padding: '14px 16px', border: '1px solid #F1F5F9', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <div style={{ width: '44px', height: '44px', borderRadius: '10px', background: '#DBEAFE', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Building2 size={20} color="#3B82F6" />
+            </div>
+            <div>
+              <div style={{ fontSize: '0.75rem', color: '#64748B', fontWeight: 500 }}>Grades Covered</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#1E293B', lineHeight: 1.2 }}>{stats.gradesCovered}</div>
+              <div style={{ fontSize: '0.6875rem', color: '#3B82F6', marginTop: '2px' }}>Grades 3, 6, 9</div>
+            </div>
+          </div>
+        </div>
+
+        <div style={{ background: 'white', borderRadius: '12px', padding: '14px 16px', border: '1px solid #F1F5F9', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <div style={{ width: '44px', height: '44px', borderRadius: '10px', background: '#F3E8FF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Calendar size={20} color="#8B5CF6" />
+            </div>
+            <div>
+              <div style={{ fontSize: '0.75rem', color: '#64748B', fontWeight: 500 }}>Academic Year</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#1E293B', lineHeight: 1.2 }}>2024-25</div>
+              <div style={{ fontSize: '0.6875rem', color: '#8B5CF6', marginTop: '2px' }}>Current Year</div>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Filters and Table */}
-      <div className="card" style={{ borderRadius: '20px', boxShadow: 'var(--shadow-card)', padding: '24px' }}>
-        {/* Filters */}
-        <div className="flex gap-4 mb-6">
-          <div className="flex-1 relative">
-            <Search size={16} className="text-muted absolute left-3 top-3" />
-            <input 
-              type="text" 
-              placeholder="Search by student name or APAAR ID" 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              style={{ width: '100%', padding: '10px 10px 10px 36px', borderRadius: '12px', border: '1px solid var(--border-light)', fontSize: '0.875rem' }} 
-            />
-          </div>
-          <select value={gradeFilter} onChange={(e) => setGradeFilter(e.target.value)} style={{ padding: '10px', borderRadius: '12px', border: '1px solid var(--border-light)', fontSize: '0.875rem', minWidth: '150px' }}>
-            <option>All Grades</option>
-            {gradeOptions.map(g => <option key={g.grade_id} value={g.grade_name}>{g.grade_name}</option>)}
-          </select>
-          <select disabled={gradeFilter === 'All Grades'} value={sectionFilter} onChange={(e) => setSectionFilter(e.target.value)} style={{ padding: '10px', borderRadius: '12px', border: '1px solid var(--border-light)', fontSize: '0.875rem', minWidth: '150px' }}>
-            <option>All Sections</option>
-            {sectionOptions.map(s => <option key={s} value={s}>{s}</option>)}
-          </select>
-          
-          <button onClick={() => { setSearchQuery(''); setGradeFilter('All Grades'); }} className="btn btn-outline text-muted" style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'white', borderRadius: '12px' }}>
-            <RotateCcw size={16} /> Reset
-          </button>
-          <button className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(76,53,230,0.1)', color: '#4C35E6', border: '1px solid rgba(76,53,230,0.2)', borderRadius: '12px' }}>
-            <Filter size={16} /> Filters
-          </button>
+      {/* Filter Bar */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'nowrap' }}>
+        <div style={{ position: 'relative', minWidth: '280px', flex: 1, maxWidth: '320px' }}>
+          <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94A3B8' }} />
+          <input
+            type="text"
+            placeholder="Search by student name or APAAR ID"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            style={{
+              width: '100%', padding: '10px 12px 10px 36px', borderRadius: '10px',
+              border: '1px solid #E2E8F0', fontSize: '0.8125rem', outline: 'none',
+              background: 'white', height: '40px',
+            }}
+          />
         </div>
 
-        {/* Table */}
+        <div style={{ position: 'relative' }}>
+          <select
+            value={selectedGrade}
+            onChange={(e) => setSelectedGrade(e.target.value)}
+            style={{
+              padding: '10px 32px 10px 12px', borderRadius: '10px', border: '1px solid #E2E8F0',
+              fontSize: '0.8125rem', background: 'white', height: '40px', outline: 'none', cursor: 'pointer',
+            }}
+          >
+            <option value="">All Grades</option>
+            <option value="3">Grade 3</option>
+            <option value="6">Grade 6</option>
+            <option value="9">Grade 9</option>
+          </select>
+          <ChevronDown size={14} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#64748B' }} />
+        </div>
+
+        <div style={{ position: 'relative' }}>
+          <select
+            value={selectedSection}
+            onChange={(e) => setSelectedSection(e.target.value)}
+            style={{
+              padding: '10px 32px 10px 12px', borderRadius: '10px', border: '1px solid #E2E8F0',
+              fontSize: '0.8125rem', background: 'white', height: '40px', outline: 'none', cursor: 'pointer',
+            }}
+          >
+            <option value="">All Sections</option>
+            <option value="A">A</option>
+            <option value="B">B</option>
+            <option value="C">C</option>
+          </select>
+          <ChevronDown size={14} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#64748B' }} />
+        </div>
+
+        <div style={{ position: 'relative' }}>
+          <select
+            value={selectedStatus}
+            onChange={(e) => setSelectedStatus(e.target.value)}
+            style={{
+              padding: '10px 32px 10px 12px', borderRadius: '10px', border: '1px solid #E2E8F0',
+              fontSize: '0.8125rem', background: 'white', height: '40px', outline: 'none', cursor: 'pointer',
+            }}
+          >
+            <option value="">All Status</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+          </select>
+          <ChevronDown size={14} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#64748B' }} />
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', borderRadius: '10px', border: '1px solid #E2E8F0', fontSize: '0.8125rem', background: 'white', height: '40px', color: '#64748B' }}>
+          <Calendar size={14} color="#6366F1" />
+          <span style={{ color: '#1E293B' }}>Academic Year: 2024-25</span>
+        </div>
+
+        <button
+          onClick={() => { setSelectedGrade(''); setSelectedSection(''); setSelectedStatus(''); setSearchQuery(''); setCurrentPage(1); }}
+          style={{
+            display: 'flex', alignItems: 'center', gap: '6px', padding: '10px 16px', borderRadius: '10px',
+            border: '1px solid #E2E8F0', fontSize: '0.8125rem', background: 'white', height: '40px',
+            cursor: 'pointer', color: '#64748B',
+          }}
+        >
+          <RefreshCw size={14} />
+          Reset
+        </button>
+
+        <button
+          style={{
+            display: 'flex', alignItems: 'center', gap: '6px', padding: '10px 16px', borderRadius: '10px',
+            border: '1px solid #6366F1', fontSize: '0.8125rem', background: '#6366F1', height: '40px',
+            cursor: 'pointer', color: 'white', fontWeight: 500,
+          }}
+        >
+          <Filter size={14} />
+          Filters
+        </button>
+      </div>
+
+      {/* Table Section */}
+      <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #F1F5F9', boxShadow: '0 1px 3px rgba(0,0,0,0.04)', overflow: 'hidden' }}>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
             <thead>
-              <tr style={{ background: '#F8FAFC', color: 'var(--text-muted)' }}>
-                <th style={{ textAlign: 'left', padding: '16px 12px', fontWeight: 600, borderBottom: '1px solid var(--border-light)', borderTopLeftRadius: '12px', borderBottomLeftRadius: '12px' }}>S.No.</th>
-                <th style={{ textAlign: 'left', padding: '16px 12px', fontWeight: 600, borderBottom: '1px solid var(--border-light)' }}>Student Name</th>
-                <th style={{ textAlign: 'left', padding: '16px 12px', fontWeight: 600, borderBottom: '1px solid var(--border-light)' }}>APAAR ID</th>
-                <th style={{ textAlign: 'left', padding: '16px 12px', fontWeight: 600, borderBottom: '1px solid var(--border-light)' }}>Gender</th>
-                <th style={{ textAlign: 'left', padding: '16px 12px', fontWeight: 600, borderBottom: '1px solid var(--border-light)' }}>Grade</th>
-                <th style={{ textAlign: 'left', padding: '16px 12px', fontWeight: 600, borderBottom: '1px solid var(--border-light)' }}>Section</th>
-                <th style={{ textAlign: 'center', padding: '16px 12px', fontWeight: 600, borderBottom: '1px solid var(--border-light)', borderTopRightRadius: '12px', borderBottomRightRadius: '12px' }}>Actions</th>
+              <tr style={{ borderBottom: '1px solid #F1F5F9' }}>
+                <th style={{ textAlign: 'left', padding: '14px 16px', fontWeight: 600, fontSize: '0.8125rem', color: '#64748B', background: '#FAFBFC' }}>S. No.</th>
+                <th style={{ textAlign: 'left', padding: '14px 16px', fontWeight: 600, fontSize: '0.8125rem', color: '#64748B', background: '#FAFBFC' }}>Student Name</th>
+                <th style={{ textAlign: 'left', padding: '14px 16px', fontWeight: 600, fontSize: '0.8125rem', color: '#64748B', background: '#FAFBFC' }}>APAAR ID</th>
+                <th style={{ textAlign: 'left', padding: '14px 16px', fontWeight: 600, fontSize: '0.8125rem', color: '#64748B', background: '#FAFBFC' }}>Gender</th>
+                <th style={{ textAlign: 'left', padding: '14px 16px', fontWeight: 600, fontSize: '0.8125rem', color: '#64748B', background: '#FAFBFC' }}>Grade</th>
+                <th style={{ textAlign: 'left', padding: '14px 16px', fontWeight: 600, fontSize: '0.8125rem', color: '#64748B', background: '#FAFBFC' }}>Section</th>
+                <th style={{ textAlign: 'left', padding: '14px 16px', fontWeight: 600, fontSize: '0.8125rem', color: '#64748B', background: '#FAFBFC' }}>Date of Birth</th>
+                <th style={{ textAlign: 'left', padding: '14px 16px', fontWeight: 600, fontSize: '0.8125rem', color: '#64748B', background: '#FAFBFC' }}>Status</th>
+                <th style={{ textAlign: 'left', padding: '14px 16px', fontWeight: 600, fontSize: '0.8125rem', color: '#64748B', background: '#FAFBFC' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={7} style={{ textAlign: 'center', padding: '20px' }}>Loading students...</td></tr>
+                <tr>
+                  <td colSpan={9} style={{ textAlign: 'center', padding: '40px', color: '#64748B' }}>
+                    Loading students...
+                  </td>
+                </tr>
+              ) : error ? (
+                <tr>
+                  <td colSpan={9} style={{ textAlign: 'center', padding: '40px', color: '#EF4444' }}>
+                    {error}
+                  </td>
+                </tr>
               ) : filteredStudents.length === 0 ? (
-                <tr><td colSpan={7} style={{ textAlign: 'center', padding: '20px' }}>No students found.</td></tr>
-              ) : (
-                filteredStudents.map((s, idx) => (
-                  <tr key={s.student_id} style={{ borderBottom: '1px solid var(--border-light)', transition: 'all 0.2s ease' }} className="hover:bg-slate-50">
-                    <td style={{ padding: '20px 12px' }}>{(page - 1) * limit + idx + 1}</td>
-                    <td style={{ padding: '20px 12px', fontWeight: 600 }}>
-                      <div className="flex items-center gap-3">
-                        <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'rgba(76,53,230,0.1)', color: '#4C35E6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 'bold' }}>
-                          {s.full_name.split(' ').map((n: string) => n[0]).join('')}
+                <tr>
+                  <td colSpan={9} style={{ textAlign: 'center', padding: '40px', color: '#64748B' }}>
+                    No students found
+                  </td>
+                </tr>
+              ) : filteredStudents.map((row: any, index: number) => {
+                const studentName = row.name || row.student_name || row.full_name || '-';
+                const initials = getInitials(studentName);
+                const avatarColor = getAvatarColor(studentName);
+                const grade = typeof row.grade === 'object' ? row.grade?.grade_name : (row.grade || '-');
+                const gradeFormatted = typeof grade === 'string' && grade.toLowerCase().startsWith('grade') ? grade : (typeof grade === 'number' ? `Grade ${grade}` : grade);
+                const status = String(row.status || '').toLowerCase();
+                const dateOfBirth = row.dob || row.date_of_birth || row.DateOfBirth || '-';
+
+                return (
+                  <tr key={row.id || index} style={{ borderBottom: '1px solid #F1F5F9' }}>
+                    <td style={{ padding: '14px 16px', fontSize: '0.875rem', color: '#64748B' }}>{startIndex + index + 1}</td>
+                    <td style={{ padding: '14px 16px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{
+                          width: '36px', height: '36px', borderRadius: '50%', background: avatarColor,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: '0.75rem', fontWeight: 600, color: 'white', flexShrink: 0,
+                        }}>
+                          {initials}
                         </div>
-                        {s.full_name}
+                        <span style={{ fontWeight: 500, color: '#1E293B' }}>{studentName}</span>
                       </div>
                     </td>
-                    <td style={{ padding: '20px 12px', color: 'var(--text-muted)' }}>{s.apaar_id || '-'}</td>
-                    <td style={{ padding: '20px 12px', color: 'var(--text-muted)' }}>
-                      <span style={{ padding: '4px 10px', background: '#F1F5F9', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 500 }}>
-                        {s.gender === 'm' ? 'Male' : s.gender === 'f' ? 'Female' : 'Other'}
+                    <td style={{ padding: '14px 16px', fontSize: '0.875rem', color: '#64748B' }}>{row.apaarId || row.apaar_id || '-'}</td>
+                    <td style={{ padding: '14px 16px', fontSize: '0.875rem', color: '#64748B' }}>{(row.gender === 'm' || row.gender === 'M' || (row.gender || '').toLowerCase() === 'male') ? 'Male' : (row.gender === 'f' || row.gender === 'F' || (row.gender || '').toLowerCase() === 'female') ? 'Female' : row.gender || '-'}</td>
+                    <td style={{ padding: '14px 16px', fontSize: '0.875rem', color: '#64748B' }}>{gradeFormatted}</td>
+                    <td style={{ padding: '14px 16px', fontSize: '0.875rem', color: '#64748B' }}>{row.section || '-'}</td>
+                    <td style={{ padding: '14px 16px', fontSize: '0.875rem', color: '#64748B' }}>{dateOfBirth}</td>
+                    <td style={{ padding: '14px 16px' }}>
+                      <span style={{
+                        padding: '4px 12px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 500,
+                        background: status === 'active' ? '#D1FAE5' : '#FEE2E2',
+                        color: status === 'active' ? '#10B981' : '#EF4444',
+                      }}>
+                        {row.status || '-'}
                       </span>
                     </td>
-                    <td style={{ padding: '20px 12px', color: 'var(--text-muted)' }}>{s.grade}</td>
-                    <td style={{ padding: '20px 12px', color: 'var(--text-muted)' }}>{s.section}</td>
-                    <td style={{ padding: '20px 12px', textAlign: 'center' }}>
-                      <div className="flex items-center justify-center gap-4 text-muted">
-                        <button onClick={() => handleEditClick(s)}><Edit size={16} className="hover:text-primary-purple cursor-pointer transition-colors" /></button>
-                        <button><MoreVertical size={16} className="cursor-pointer hover:text-text-dark transition-colors" /></button>
+                    <td style={{ padding: '14px 16px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <button
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                          title="View"
+                        >
+                          <Eye size={16} color="#6366F1" />
+                        </button>
+                        <button
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                          title="Edit"
+                        >
+                          <Edit3 size={16} color="#6366F1" />
+                        </button>
+                        <div style={{ position: 'relative' }}>
+                          <button
+                            onClick={() => setActiveDropdown(activeDropdown === (row.id || index) ? null : (row.id || index))}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                          >
+                            <MoreVertical size={16} color="#64748B" />
+                          </button>
+                          {activeDropdown === (row.id || index) && (
+                            <div style={{
+                              position: 'absolute', right: 0, top: '100%', background: 'white',
+                              borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.12)', border: '1px solid #E2E8F0',
+                              minWidth: '140px', zIndex: 10, padding: '4px',
+                            }}>
+                              <button style={{ display: 'block', width: '100%', padding: '8px 12px', textAlign: 'left', fontSize: '0.8125rem', background: 'none', border: 'none', cursor: 'pointer', borderRadius: '6px', color: '#1E293B' }}>View Details</button>
+                              <button style={{ display: 'block', width: '100%', padding: '8px 12px', textAlign: 'left', fontSize: '0.8125rem', background: 'none', border: 'none', cursor: 'pointer', borderRadius: '6px', color: '#1E293B' }}>Edit</button>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </td>
                   </tr>
-                ))
-              )}
+                );
+              })}
             </tbody>
           </table>
         </div>
-        
+
         {/* Pagination */}
-        {!loading && (
-          <div className="flex justify-between items-center mt-6 text-sm text-muted">
-            <div>Showing {(page - 1) * limit + 1} to {Math.min(page * limit, total)} of {total} students</div>
-            <div className="flex gap-2">
-              <button disabled={page === 1} onClick={() => setPage(page - 1)} style={{ padding: '6px 12px', border: '1px solid var(--border-light)', borderRadius: '8px', opacity: page === 1 ? 0.5 : 1 }}>Previous</button>
-              <button style={{ padding: '6px 12px', background: '#4C35E6', color: 'white', borderRadius: '8px', fontWeight: 600 }}>{page}</button>
-              <button disabled={page * limit >= total} onClick={() => setPage(page + 1)} style={{ padding: '6px 12px', border: '1px solid var(--border-light)', borderRadius: '8px', opacity: page * limit >= total ? 0.5 : 1 }}>Next</button>
-            </div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderTop: '1px solid #F1F5F9' }}>
+          <div style={{ fontSize: '0.8125rem', color: '#64748B' }}>
+            Showing {totalStudents > 0 ? startIndex + 1 : 0} to {endIndex} of {totalStudents.toLocaleString('en-IN')} students
           </div>
-        )}
-      </div>
-
-      {/* Add / Edit Student Modal */}
-      {showAddModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(17,24,39,0.4)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-          <div style={{ background: 'white', padding: '32px', borderRadius: '24px', width: '600px', boxShadow: '0 20px 50px rgba(17,24,39,0.12)' }}>
-            <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '24px' }}>
-              {formData.student_id ? 'Edit Student' : 'Add Student'}
-            </h2>
-            
-            <div className="grid grid-cols-2 gap-5 mb-8">
-              <div className="col-span-2">
-                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-dark)', marginBottom: '8px' }}>Student Name *</label>
-                <input type="text" value={formData.full_name} onChange={e => setFormData({...formData, full_name: e.target.value})} placeholder="Enter full name" style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid var(--border-light)', fontSize: '0.875rem' }} />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-dark)', marginBottom: '8px' }}>APAAR ID <span className="text-muted font-normal text-xs">(Optional)</span></label>
-                <input type="text" value={formData.apaar_id} onChange={e => setFormData({...formData, apaar_id: e.target.value})} placeholder="Enter APAAR ID" style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid var(--border-light)', fontSize: '0.875rem' }} />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-dark)', marginBottom: '8px' }}>Gender *</label>
-                <select value={formData.gender} onChange={e => setFormData({...formData, gender: e.target.value})} style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid var(--border-light)', fontSize: '0.875rem', backgroundColor: 'white' }}>
-                  <option value="">Select Gender</option>
-                  <option value="Male">Male</option>
-                  <option value="Female">Female</option>
-                  <option value="Other">Other</option>
-                </select>
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-dark)', marginBottom: '8px' }}>Grade *</label>
-                <select value={formData.grade} onChange={e => setFormData({...formData, grade: e.target.value})} style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid var(--border-light)', fontSize: '0.875rem', backgroundColor: 'white' }}>
-                  <option value="">Select Grade</option>
-                  {gradeOptions.map(g => <option key={g.grade_id} value={g.grade_name}>{g.grade_name}</option>)}
-                </select>
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-dark)', marginBottom: '8px' }}>Section *</label>
-                <input type="text" value={formData.section} onChange={e => setFormData({...formData, section: e.target.value.toUpperCase()})} placeholder="e.g. A" maxLength={2} style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid var(--border-light)', fontSize: '0.875rem' }} />
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-3 pt-4" style={{ borderTop: '1px solid var(--border-light)' }}>
-              <button onClick={() => setShowAddModal(false)} className="btn btn-outline" style={{ background: 'white', padding: '12px 24px', borderRadius: '12px' }}>Cancel</button>
-              <button onClick={handleAddOrEditStudent} disabled={submitting} className="btn btn-primary" style={{ padding: '12px 24px', borderRadius: '12px', opacity: submitting ? 0.7 : 1 }}>
-                {submitting ? 'Saving...' : (formData.student_id ? 'Update Student' : 'Save Student')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Bulk Upload Modal */}
-      {showBulkUploadModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(17,24,39,0.4)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-          <div style={{ background: 'white', padding: '32px', borderRadius: '24px', width: '600px', boxShadow: '0 20px 50px rgba(17,24,39,0.12)' }}>
-            <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '8px' }}>Bulk Upload Students</h2>
-            <p className="text-muted text-sm mb-6">Download the template, fill in student details, and upload the Excel file.</p>
-            
-            {uploadState === 'empty' && (
-              <>
-                <div style={{ padding: '16px', background: '#F8FAFC', borderRadius: '12px', border: '1px solid var(--border-light)', marginBottom: '24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div className="flex items-center gap-3">
-                    <div style={{ background: 'white', padding: '10px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>
-                      <Download size={20} className="text-primary-purple" />
-                    </div>
-                    <div>
-                      <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>Student Template.xlsx</div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Standard format for bulk upload</div>
-                    </div>
-                  </div>
-                  <button className="text-primary-purple font-semibold text-sm hover:underline">Download Template</button>
-                </div>
-
-                <div 
-                  onClick={() => setUploadState('uploading')}
-                  style={{ 
-                    border: '2px dashed var(--border-light)', 
-                    borderRadius: '16px', 
-                    padding: '48px 24px', 
-                    textAlign: 'center',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                    backgroundColor: 'white'
-                  }}
-                  className="hover:border-primary-purple hover:bg-purple-50/30"
-                >
-                  <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: '#F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-                    <Upload size={24} className="text-muted" />
-                  </div>
-                  <div style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '4px' }}>Click or drag file to upload</div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Supports .xlsx up to 10MB</div>
-                </div>
-              </>
-            )}
-
-            {uploadState === 'uploading' && (
-              <div style={{ padding: '48px 24px', textAlign: 'center' }}>
-                <div className="animate-spin" style={{ width: '40px', height: '40px', border: '3px solid #E2E8F0', borderTopColor: 'var(--primary-purple)', borderRadius: '50%', margin: '0 auto 16px' }}></div>
-                <div style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '4px' }}>Processing file...</div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Validating 142 records</div>
-                
-                <div style={{ width: '100%', height: '8px', background: '#F1F5F9', borderRadius: '4px', marginTop: '24px', overflow: 'hidden' }}>
-                  <div style={{ height: '100%', width: '65%', background: 'var(--primary-purple)', borderRadius: '4px', transition: 'width 0.3s ease' }}></div>
-                </div>
-                
-                <button onClick={() => setUploadState('success')} className="mt-8 text-sm text-primary-purple">(Simulate Success)</button>
-                <button onClick={() => setUploadState('error')} className="mt-2 ml-4 text-sm text-red-500">(Simulate Error)</button>
-              </div>
-            )}
-
-            {uploadState === 'success' && (
-              <div style={{ padding: '32px 24px', textAlign: 'center' }}>
-                <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: '#D1FAE5', color: '#10B981', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-                  <CheckCircle size={32} />
-                </div>
-                <div style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '8px' }}>Upload Successful</div>
-                <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>142 students have been successfully registered.</div>
-              </div>
-            )}
-
-            {uploadState === 'error' && (
-              <div style={{ padding: '32px 24px' }}>
-                <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-                  <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: '#FEE2E2', color: '#EF4444', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-                    <AlertCircle size={32} />
-                  </div>
-                  <div style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '8px' }}>Validation Failed</div>
-                  <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>12 records contain errors. Please download the error file, fix the issues, and re-upload.</div>
-                </div>
-                
-                <div style={{ padding: '16px', background: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div className="flex items-center gap-3 text-red-700">
-                    <Download size={20} />
-                    <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>Download Error Log.xlsx</span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <div className="flex justify-end gap-3 pt-6 mt-6" style={{ borderTop: '1px solid var(--border-light)' }}>
-              <button 
-                onClick={() => { setShowBulkUploadModal(false); setTimeout(() => setUploadState('empty'), 300); }} 
-                className="btn btn-outline" 
-                style={{ background: 'white', padding: '12px 24px', borderRadius: '12px' }}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                style={{
+                  width: '32px', height: '32px', borderRadius: '8px', border: '1px solid #E2E8F0',
+                  background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  cursor: currentPage === 1 ? 'not-allowed' : 'pointer', opacity: currentPage === 1 ? 0.5 : 1,
+                  fontSize: '0.875rem', color: '#64748B',
+                }}
               >
-                {uploadState === 'success' ? 'Close' : 'Cancel'}
+                &lt;
               </button>
-              
-              {uploadState === 'error' && (
-                <button onClick={() => setUploadState('empty')} className="btn btn-primary" style={{ padding: '12px 24px', borderRadius: '12px' }}>
-                  Re-upload File
-                </button>
+              {[...Array(Math.min(totalPages, 5))].map((_, i) => {
+                let pageNum: number;
+                if (totalPages <= 5) {
+                  pageNum = i + 1;
+                } else if (currentPage <= 3) {
+                  pageNum = i + 1;
+                } else if (currentPage >= totalPages - 2) {
+                  pageNum = totalPages - 4 + i;
+                } else {
+                  pageNum = currentPage - 2 + i;
+                }
+                return (
+                  <button
+                    key={pageNum}
+                    onClick={() => setCurrentPage(pageNum)}
+                    style={{
+                      width: '32px', height: '32px', borderRadius: '8px',
+                      border: currentPage === pageNum ? '1px solid #6366F1' : '1px solid #E2E8F0',
+                      background: currentPage === pageNum ? '#6366F1' : 'white',
+                      color: currentPage === pageNum ? 'white' : '#64748B',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      cursor: 'pointer', fontSize: '0.875rem', fontWeight: currentPage === pageNum ? 600 : 400,
+                    }}
+                  >
+                    {pageNum}
+                  </button>
+                );
+              })}
+              {totalPages > 5 && (
+                <>
+                  <span style={{ color: '#94A3B8', padding: '0 4px' }}>...</span>
+                  <button
+                    onClick={() => setCurrentPage(totalPages)}
+                    style={{
+                      width: '32px', height: '32px', borderRadius: '8px', border: '1px solid #E2E8F0',
+                      background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      cursor: 'pointer', fontSize: '0.875rem', color: '#64748B',
+                    }}
+                  >
+                    {totalPages}
+                  </button>
+                </>
               )}
+              <button
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                style={{
+                  width: '32px', height: '32px', borderRadius: '8px', border: '1px solid #E2E8F0',
+                  background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  cursor: currentPage === totalPages ? 'not-allowed' : 'pointer', opacity: currentPage === totalPages ? 0.5 : 1,
+                  fontSize: '0.875rem', color: '#64748B',
+                }}
+              >
+                &gt;
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <select
+                value={itemsPerPage}
+                onChange={(e) => { setItemsPerPage(Number(e.target.value)); setCurrentPage(1); }}
+                style={{
+                  padding: '6px 8px', borderRadius: '8px', border: '1px solid #E2E8F0',
+                  fontSize: '0.8125rem', background: 'white', cursor: 'pointer', color: '#64748B',
+                }}
+              >
+                <option value={10}>10</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+              <span style={{ fontSize: '0.8125rem', color: '#64748B' }}>/ page</span>
             </div>
           </div>
         </div>
-      )}
-
+      </div>
     </div>
   );
 }

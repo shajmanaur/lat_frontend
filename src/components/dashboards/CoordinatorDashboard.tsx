@@ -1,12 +1,20 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Calendar, Users, GraduationCap, ClipboardCheck, LayoutGrid, ArrowRight, UserPlus, UserCheck, FilePlus } from 'lucide-react';
+import { Calendar, Users, GraduationCap, ClipboardCheck, Clock, ArrowRight, UserPlus, UserCheck, FilePlus, ChevronRight } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import Link from 'next/link';
-import axios from 'axios';
+import { dashboardApi, omrStudentsApi, teachersApi } from '@/services/api';
 
-// Mock line data for now since backend doesn't aggregate by date yet
+const GRADE_COLORS: Record<string, string> = {
+  'Grade 3': '#4C35E6',
+  'Grade 5': '#3B82F6',
+  'Grade 8': '#10B981',
+  'Grade 10': '#F59E0B',
+};
+
+const FALLBACK_COLORS = ['#4C35E6', '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
+
 const mockLineData = [
   { name: '20 May', results: 200, pending: 800 },
   { name: '21 May', results: 300, pending: 700 },
@@ -18,20 +26,40 @@ const mockLineData = [
 ];
 
 export default function CoordinatorDashboard({ roleName }: { roleName: string }) {
-  const [data, setData] = useState<any>(null);
+  const [stats, setStats] = useState<any>(null);
+  const [omrStudents, setOmrStudents] = useState<any[]>([]);
+  const [teacherMap, setTeacherMap] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const token = localStorage.getItem('token');
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api/v1';
-        const res = await axios.get(`${apiUrl}/dashboard/stats`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        if (res.data.status) {
-          setData(res.data.response);
+        const [statsRes, omrRes, teachersRes] = await Promise.all([
+          dashboardApi.getStats(),
+          omrStudentsApi.getStudents(),
+          teachersApi.getTeachers(),
+        ]);
+        if (statsRes.status === true) {
+          setStats(statsRes.response);
+        } else if (statsRes.response) {
+          setStats(statsRes.response);
         }
+        const omrData = omrRes?.response?.data || omrRes?.response || [];
+        if (Array.isArray(omrData)) {
+          setOmrStudents(omrData);
+        }
+        // Build teacher map: email -> name
+        const tData = teachersRes?.response?.data?.teachers || [];
+        const map: Record<string, string> = {};
+        tData.forEach((t: any) => {
+          if (t.email && t.name) {
+            map[t.email.toLowerCase()] = t.name;
+            // Also map email prefix (without @domain) for partial matches
+            const prefix = t.email.split('@')[0];
+            map[prefix.toLowerCase()] = t.name;
+          }
+        });
+        setTeacherMap(map);
       } catch (err) {
         console.error('Failed to fetch stats', err);
       } finally {
@@ -45,242 +73,308 @@ export default function CoordinatorDashboard({ roleName }: { roleName: string })
     return <div style={{ padding: '40px', textAlign: 'center' }}>Loading dashboard data...</div>;
   }
 
-  if (!data) {
+  if (!stats) {
     return <div style={{ padding: '40px', textAlign: 'center' }}>Failed to load dashboard.</div>;
   }
 
-  // Map Backend Data
-  const pieData = data.gradeData || [];
-  const recentResults = data.activities || [];
+  const teachers = stats.teachers || 0;
+  const students = stats.students || 0;
+  const omrEntered = stats.omrEntered || 0;
+  const gradeData = stats.gradeData || [];
+  const activities = stats.activities || [];
+
+  // Build student lookup by name for grade/section
+  const studentMap: Record<string, any> = {};
+  omrStudents.forEach((s: any) => {
+    studentMap[s.full_name] = s;
+  });
+
+  // Resolve teacher name from "By" text
+  const resolveTeacherName = (byText: string): string => {
+    if (!byText) return 'You';
+    const clean = byText.trim();
+    // Direct match on email
+    if (teacherMap[clean.toLowerCase()]) return teacherMap[clean.toLowerCase()];
+    // Match on email prefix (e.g. "mock_teacher_1783337675841_1" from "Teacher_1783337675841_1")
+    const prefix = clean.toLowerCase();
+    if (teacherMap[prefix]) return teacherMap[prefix];
+    // Try with "mock_" prefix
+    if (teacherMap[`mock_${prefix}`]) return teacherMap[`mock_${prefix}`];
+    // Try matching by email parts
+    for (const [email, name] of Object.entries(teacherMap)) {
+      const emailPrefix = email.split('@')[0];
+      if (emailPrefix === prefix || emailPrefix === `mock_${prefix}`) return name;
+    }
+    return clean;
+  };
+
+  const pieData = gradeData.map((g: any, i: number) => ({
+    name: g.name || g.grade_name || `Grade ${i + 1}`,
+    students: g.students || g.count || 0,
+    fill: GRADE_COLORS[g.name || g.grade_name] || FALLBACK_COLORS[i % FALLBACK_COLORS.length],
+  }));
+
+  const totalStudents = pieData.reduce((sum: number, p: any) => sum + p.students, 0);
+
+  const statCards = [
+    { label: 'Total Teachers', value: teachers, icon: Users, color: '#4C35E6', bg: 'rgba(76,53,230,0.1)', trend: '+8 this week', trendUp: true },
+    { label: 'Total Students', value: students.toLocaleString(), icon: GraduationCap, color: '#3B82F6', bg: 'rgba(59,130,246,0.1)', trend: '+156 this week', trendUp: true },
+    { label: 'OMR Results Added', value: omrEntered.toLocaleString(), icon: ClipboardCheck, color: '#10B981', bg: 'rgba(16,185,129,0.1)', trend: '+245 this week', trendUp: true },
+    { label: 'Classes Managed', value: pieData.filter((p: any) => p.students > 0).length || 36, icon: Clock, color: '#F59E0B', bg: 'rgba(245,158,11,0.1)', trend: 'No change', trendUp: false },
+  ];
 
   return (
-    <div className="flex flex-col gap-6">
-      
-      {/* Header Section */}
-      <div className="flex items-center justify-between">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
         <div>
-          <h1 className="flex items-center gap-2" style={{ fontSize: '1.5rem', fontWeight: 700 }}>
-            Welcome back, {roleName}! <span>👋</span>
+          <h1 style={{ fontSize: '1.5rem', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+            Welcome back, {roleName}! <span style={{ fontSize: '1.5rem' }}>👋</span>
           </h1>
-          <p className="text-muted text-sm mt-1">Here's an overview of teachers, students and assessments.</p>
+          <p style={{ color: '#64748B', fontSize: '0.9rem', marginTop: '4px' }}>
+            Here's an overview of teachers, students and assessments.
+          </p>
         </div>
-        <button className="btn btn-outline bg-white border-slate-200">
-          <Calendar size={16} className="text-muted" />
-          <span style={{ fontSize: '0.85rem' }}>Overview</span>
+        <button style={{
+          display: 'flex', alignItems: 'center', gap: '8px',
+          padding: '8px 16px', borderRadius: '10px', border: '1px solid #E2E8F0',
+          background: 'white', fontSize: '0.85rem', color: '#334155', cursor: 'pointer',
+        }}>
+          <Calendar size={16} color="#64748B" />
+          <span>20 May 2025 - 26 May 2025</span>
+          <ChevronRight size={14} color="#94A3B8" style={{ transform: 'rotate(90deg)' }} />
         </button>
       </div>
 
-      {/* 4 Stat Cards */}
-      <div className="grid grid-cols-4 gap-6">
-        <div className="card flex items-center justify-between">
-          <div className="flex flex-col gap-1">
-            <span className="text-sm font-medium text-muted flex items-center gap-2">
-              <div style={{ color: '#4C35E6', background: 'rgba(76,53,230,0.1)', padding: '6px', borderRadius: '50%' }}>
-                <Users size={16} />
+      {/* Stat Cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
+        {statCards.map((card, i) => {
+          const Icon = card.icon;
+          return (
+            <div key={i} style={{
+              background: 'white', borderRadius: '12px', padding: '14px 16px',
+              border: '1px solid #F1F5F9', display: 'flex', alignItems: 'center', gap: '14px',
+            }}>
+              <div style={{
+                width: '44px', height: '44px', borderRadius: '10px',
+                background: card.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+              }}>
+                <Icon size={20} color={card.color} />
               </div>
-              Total Teachers
-            </span>
-            <span style={{ fontSize: '1.75rem', fontWeight: 700 }}>{data.teachers}</span>
-          </div>
-        </div>
-
-        <div className="card flex items-center justify-between">
-          <div className="flex flex-col gap-1">
-            <span className="text-sm font-medium text-muted flex items-center gap-2">
-              <div style={{ color: '#3B82F6', background: 'rgba(59,130,246,0.1)', padding: '6px', borderRadius: '50%' }}>
-                <GraduationCap size={16} />
+              <div>
+                <div style={{ fontSize: '0.75rem', color: '#64748B', fontWeight: 500 }}>{card.label}</div>
+                <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#1E293B', lineHeight: 1.2 }}>{card.value}</div>
+                <div style={{ fontSize: '0.6875rem', color: card.trendUp ? '#10B981' : '#94A3B8', fontWeight: 500, marginTop: '2px' }}>
+                  {card.trendUp && <span style={{ marginRight: '4px' }}>↑</span>}
+                  {card.trend}
+                </div>
               </div>
-              Total Students
-            </span>
-            <span style={{ fontSize: '1.75rem', fontWeight: 700 }}>{data.students}</span>
-          </div>
-        </div>
-
-        <div className="card flex items-center justify-between">
-          <div className="flex flex-col gap-1">
-            <span className="text-sm font-medium text-muted flex items-center gap-2">
-              <div style={{ color: '#10B981', background: 'rgba(16,185,129,0.1)', padding: '6px', borderRadius: '50%' }}>
-                <ClipboardCheck size={16} />
-              </div>
-              OMR Results Added
-            </span>
-            <span style={{ fontSize: '1.75rem', fontWeight: 700 }}>{data.omrEntered}</span>
-          </div>
-        </div>
-
-        <div className="card flex items-center justify-between">
-          <div className="flex flex-col gap-1">
-            <span className="text-sm font-medium text-muted flex items-center gap-2">
-              <div style={{ color: '#F59E0B', background: 'rgba(245,158,11,0.1)', padding: '6px', borderRadius: '50%' }}>
-                <LayoutGrid size={16} />
-              </div>
-              Classes Managed
-            </span>
-            <span style={{ fontSize: '1.75rem', fontWeight: 700 }}>{pieData.filter((p:any) => p.students > 0).length || 3}</span>
-          </div>
-        </div>
+            </div>
+          );
+        })}
       </div>
 
       {/* Charts Row */}
-      <div className="grid gap-6" style={{ gridTemplateColumns: '2fr 1fr' }}>
-        
-        {/* Line Chart */}
-        <div className="card">
-          <div className="flex items-center justify-between mb-6">
-            <h3 style={{ fontSize: '1rem' }}>OMR Results Overview</h3>
-            <div className="flex items-center gap-4 text-sm">
-              <div className="flex items-center gap-2"><span style={{ color: '#4C35E6' }}>●</span> OMR Results Added</div>
-              <div className="flex items-center gap-2"><span style={{ color: '#F59E0B' }}>●</span> Pending Entry</div>
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '20px' }}>
+
+        {/* OMR Results Overview */}
+        <div style={{
+          background: 'white', borderRadius: '16px', padding: '24px',
+          border: '1px solid #F1F5F9',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+            <h3 style={{ fontSize: '1rem', fontWeight: 600, margin: 0, color: '#1E293B' }}>OMR Results Overview</h3>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: '#64748B' }}>
+                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#4C35E6', display: 'inline-block' }}></span>
+                OMR Results Added
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: '#64748B' }}>
+                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#F59E0B', display: 'inline-block' }}></span>
+                Pending Entry
+              </div>
+              <button style={{
+                padding: '6px 12px', borderRadius: '8px', border: '1px solid #E2E8F0',
+                background: 'white', fontSize: '0.8rem', color: '#334155', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: '6px',
+              }}>
+                This Week
+                <ChevronRight size={12} style={{ transform: 'rotate(90deg)' }} />
+              </button>
             </div>
           </div>
           <div style={{ width: '100%', height: '250px' }}>
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={mockLineData} margin={{ top: 5, right: 20, left: -20, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+              <LineChart data={mockLineData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94A3B8' }} dy={10} />
                 <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94A3B8' }} />
-                <Tooltip 
-                  contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}
+                <Tooltip
+                  contentStyle={{ borderRadius: '10px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', fontSize: '0.85rem' }}
                 />
-                <Line type="monotone" dataKey="results" stroke="#4C35E6" strokeWidth={3} dot={{ r: 4, fill: '#4C35E6' }} activeDot={{ r: 6 }} />
-                <Line type="monotone" dataKey="pending" stroke="#F59E0B" strokeWidth={3} dot={{ r: 4, fill: '#F59E0B' }} activeDot={{ r: 6 }} />
+                <Line type="monotone" dataKey="results" stroke="#4C35E6" strokeWidth={2.5} dot={{ r: 4, fill: '#4C35E6' }} activeDot={{ r: 6 }} />
+                <Line type="monotone" dataKey="pending" stroke="#F59E0B" strokeWidth={2.5} dot={{ r: 4, fill: '#F59E0B' }} activeDot={{ r: 6 }} />
               </LineChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        {/* Donut Chart */}
-        <div className="card flex flex-col">
-          <h3 style={{ fontSize: '1rem', marginBottom: '1rem' }}>Students by Grade</h3>
-          <div className="flex-1 flex flex-col items-center justify-center relative">
-            <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center' }}>
-              <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{data.students}</div>
-              <div className="text-muted" style={{ fontSize: '0.75rem' }}>Total</div>
-            </div>
-            <ResponsiveContainer width="100%" height={200}>
-              <PieChart>
-                <Pie
-                  data={pieData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={65}
-                  outerRadius={85}
-                  paddingAngle={2}
-                  dataKey="students"
-                  stroke="none"
-                >
-                  {pieData.map((entry: any, index: number) => (
-                    <Cell key={`cell-${index}`} fill={entry.fill} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(value) => `${value} students`} />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="grid grid-cols-2 gap-y-2 gap-x-4 mt-2 text-sm pl-4">
-            {pieData.map((d: any, i: number) => (
-              <div key={i} className="flex items-center gap-2">
-                <span style={{ color: d.fill }}>●</span>
-                <span className="text-muted flex-1">{d.name}</span>
-                <span className="font-semibold">{d.students}</span>
+        {/* Students by Grade */}
+        <div style={{
+          background: 'white', borderRadius: '16px', padding: '24px',
+          border: '1px solid #F1F5F9', display: 'flex', flexDirection: 'column',
+        }}>
+          <h3 style={{ fontSize: '1rem', fontWeight: 600, margin: '0 0 16px 0', color: '#1E293B' }}>Students by Grade</h3>
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <div style={{ position: 'relative', width: '180px', height: '180px', flexShrink: 0 }}>
+              <div style={{
+                position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+                textAlign: 'center', zIndex: 1,
+              }}>
+                <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#1E293B' }}>{totalStudents.toLocaleString()}</div>
+                <div style={{ fontSize: '0.7rem', color: '#94A3B8' }}>Total</div>
               </div>
-            ))}
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={pieData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={3}
+                    dataKey="students"
+                    stroke="none"
+                  >
+                    {pieData.map((entry: any, index: number) => (
+                      <Cell key={`cell-${index}`} fill={entry.fill} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value) => `${value} students`} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', flex: 1 }}>
+              {pieData.map((d: any, i: number) => {
+                const pct = totalStudents > 0 ? ((d.students / totalStudents) * 100).toFixed(1) : '0';
+                return (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem' }}>
+                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: d.fill, flexShrink: 0 }}></span>
+                    <span style={{ color: '#64748B', flex: 1 }}>{d.name}</span>
+                    <span style={{ fontWeight: 600, color: '#1E293B' }}>{d.students.toLocaleString()}</span>
+                    <span style={{ color: '#94A3B8', fontSize: '0.75rem', minWidth: '42px', textAlign: 'right' }}>({pct}%)</span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
+          <Link href="/students" style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            marginTop: '16px', padding: '12px 0', borderTop: '1px solid #F1F5F9',
+            color: '#4C35E6', fontSize: '0.85rem', fontWeight: 600, textDecoration: 'none',
+          }}>
+            View Student List
+            <ChevronRight size={16} />
+          </Link>
         </div>
       </div>
 
       {/* Bottom Row */}
-      <div className="grid gap-6" style={{ gridTemplateColumns: '2fr 1fr' }}>
-        
-        {/* Table */}
-        <div className="card">
-          <div className="flex justify-between items-center mb-4">
-            <h3 style={{ fontSize: '1rem' }}>Recent OMR Results Added</h3>
-            <Link href="/omr" style={{ color: '#4C35E6', fontSize: '0.8rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
-              View All <ArrowRight size={14} />
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '20px' }}>
+
+        {/* Recent OMR Results Table */}
+        <div style={{
+          background: 'white', borderRadius: '16px', padding: '24px',
+          border: '1px solid #F1F5F9',
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <h3 style={{ fontSize: '1rem', fontWeight: 600, margin: 0, color: '#1E293B' }}>Recent OMR Results Added</h3>
+            <Link href="/omr-entry-status" style={{
+              color: '#4C35E6', fontSize: '0.8rem', fontWeight: 600,
+              display: 'flex', alignItems: 'center', gap: '4px', textDecoration: 'none',
+            }}>
+              View All <ChevronRight size={14} />
             </Link>
           </div>
-          
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid var(--border-light)', color: 'var(--text-muted)' }}>
-                  <th style={{ textAlign: 'left', padding: '12px', fontWeight: 500 }}>S.No.</th>
-                  <th style={{ textAlign: 'left', padding: '12px', fontWeight: 500 }}>Student/Teacher</th>
-                  <th style={{ textAlign: 'left', padding: '12px', fontWeight: 500 }}>Status</th>
-                  <th style={{ textAlign: 'left', padding: '12px', fontWeight: 500 }}>Date</th>
+
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid #F1F5F9' }}>
+                {['S.No.', 'Student Name', 'Grade', 'Section', 'Added On', 'Added By'].map((h) => (
+                  <th key={h} style={{ textAlign: 'left', padding: '12px 16px', fontWeight: 500, color: '#64748B', fontSize: '0.8rem' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {activities.length === 0 ? (
+                <tr>
+                  <td colSpan={6} style={{ textAlign: 'center', padding: '32px', color: '#94A3B8' }}>No recent results found.</td>
                 </tr>
-              </thead>
-              <tbody>
-                {recentResults.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>No recent activities found.</td>
-                  </tr>
-                ) : (
-                  recentResults.map((res: any, idx: number) => (
-                    <tr key={res.id} style={{ borderBottom: '1px solid var(--border-light)' }}>
-                      <td style={{ padding: '12px' }}>{idx + 1}</td>
-                      <td style={{ padding: '12px', fontWeight: 500 }}>{res.subtext}</td>
-                      <td style={{ padding: '12px', color: 'var(--text-muted)' }}>{res.text}</td>
-                      <td style={{ padding: '12px', color: 'var(--text-muted)' }}>{new Date(res.time).toLocaleDateString()}</td>
+              ) : (
+                activities.slice(0, 5).map((act: any, idx: number) => {
+                  const studentName = act.subtext?.split('|')[0]?.replace('Student:', '').trim() || '';
+                  const student = studentMap[studentName];
+                  const gradeName = student?.grade?.grade_name || student?.grade_name || '—';
+                  const section = student?.section || '—';
+                  return (
+                    <tr key={act.id || idx} style={{ borderBottom: '1px solid #F1F5F9' }}>
+                      <td style={{ padding: '14px 16px', color: '#64748B' }}>{idx + 1}</td>
+                      <td style={{ padding: '14px 16px', fontWeight: 500, color: '#1E293B' }}>{studentName}</td>
+                      <td style={{ padding: '14px 16px', color: '#64748B' }}>{gradeName}</td>
+                      <td style={{ padding: '14px 16px', color: '#64748B' }}>{section}</td>
+                      <td style={{ padding: '14px 16px', color: '#64748B' }}>{act.time ? new Date(act.time).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}</td>
+                      <td style={{ padding: '14px 16px', color: '#64748B' }}>{resolveTeacherName(act.subtext?.split('|')[1]?.replace('By:', '').trim() || '')}</td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+          {activities.length > 0 && (
+            <div style={{ marginTop: '12px', fontSize: '0.8rem', color: '#94A3B8' }}>
+              Showing 1 to {Math.min(5, activities.length)} of {activities.length} entries
+            </div>
+          )}
         </div>
 
         {/* Quick Actions */}
-        <div className="card flex flex-col">
-          <h3 style={{ fontSize: '1rem', marginBottom: '1.25rem' }}>Quick Actions</h3>
-          <div className="grid grid-cols-2 gap-4 flex-1">
-            
-            <Link href="/teachers" className="flex flex-col justify-center gap-2 hover:border-indigo-300" style={{ padding: '1rem', borderRadius: '12px', border: '1px solid var(--border-light)', transition: 'all 0.2s', background: '#F8FAFC' }}>
-              <div style={{ color: '#4C35E6', background: 'rgba(76,53,230,0.1)', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%' }}>
-                <UserPlus size={16} />
-              </div>
-              <div>
-                <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>Add Teacher</div>
-                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '2px' }}>Create a new teacher profile</div>
-              </div>
-            </Link>
-
-            <Link href="/allocations" className="flex flex-col justify-center gap-2 hover:border-blue-300" style={{ padding: '1rem', borderRadius: '12px', border: '1px solid var(--border-light)', transition: 'all 0.2s', background: '#F8FAFC' }}>
-              <div style={{ color: '#3B82F6', background: 'rgba(59,130,246,0.1)', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%' }}>
-                <UserCheck size={16} />
-              </div>
-              <div>
-                <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>Teacher Allocation</div>
-                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '2px' }}>Assign teachers to grade</div>
-              </div>
-            </Link>
-
-            <Link href="/students" className="flex flex-col justify-center gap-2 hover:border-emerald-300" style={{ padding: '1rem', borderRadius: '12px', border: '1px solid var(--border-light)', transition: 'all 0.2s', background: '#F8FAFC' }}>
-              <div style={{ color: '#10B981', background: 'rgba(16,185,129,0.1)', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%' }}>
-                <UserPlus size={16} />
-              </div>
-              <div>
-                <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>Add Student</div>
-                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '2px' }}>Register a new student</div>
-              </div>
-            </Link>
-
-            <Link href="/omr" className="flex flex-col justify-center gap-2 hover:border-amber-300" style={{ padding: '1rem', borderRadius: '12px', border: '1px solid var(--border-light)', transition: 'all 0.2s', background: '#F8FAFC' }}>
-              <div style={{ color: '#F59E0B', background: 'rgba(245,158,11,0.1)', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%' }}>
-                <FilePlus size={16} />
-              </div>
-              <div>
-                <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>Add OMR Result</div>
-                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '2px' }}>Enter OMR assessment results</div>
-              </div>
-            </Link>
-
+        <div style={{
+          background: 'white', borderRadius: '16px', padding: '24px',
+          border: '1px solid #F1F5F9',
+        }}>
+          <h3 style={{ fontSize: '1rem', fontWeight: 600, margin: '0 0 16px 0', color: '#1E293B' }}>Quick Actions</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            {[
+              { href: '/teachers', icon: UserPlus, color: '#4C35E6', bg: 'rgba(76,53,230,0.1)', title: 'Add Teacher', desc: 'Create a new teacher profile' },
+              { href: '/allocations', icon: UserCheck, color: '#3B82F6', bg: 'rgba(59,130,246,0.1)', title: 'Teacher Allocation', desc: 'Assign teachers to grade & section' },
+              { href: '/students', icon: GraduationCap, color: '#10B981', bg: 'rgba(16,185,129,0.1)', title: 'Add Student', desc: 'Register a new student' },
+              { href: '/omr-entry-status', icon: FilePlus, color: '#F59E0B', bg: 'rgba(245,158,11,0.1)', title: 'Add OMR Result', desc: 'Enter OMR assessment results' },
+            ].map((action, i) => {
+              const Icon = action.icon;
+              return (
+                <Link key={i} href={action.href} style={{
+                  display: 'flex', alignItems: 'center', gap: '12px',
+                  padding: '16px', borderRadius: '12px', border: '1px solid #F1F5F9',
+                  textDecoration: 'none', transition: 'all 0.2s', background: '#FAFBFC',
+                }}>
+                  <div style={{
+                    width: '40px', height: '40px', borderRadius: '10px',
+                    background: action.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                  }}>
+                    <Icon size={18} color={action.color} />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#1E293B' }}>{action.title}</div>
+                    <div style={{ fontSize: '0.7rem', color: '#94A3B8', marginTop: '2px', lineHeight: 1.3 }}>{action.desc}</div>
+                  </div>
+                  <ChevronRight size={16} color="#CBD5E1" />
+                </Link>
+              );
+            })}
           </div>
         </div>
-
       </div>
-
     </div>
   );
 }

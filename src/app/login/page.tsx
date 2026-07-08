@@ -11,9 +11,11 @@ export default function LoginPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMsg('');
     setIsLoading(true);
     
     try {
@@ -24,10 +26,17 @@ export default function LoginPage() {
         localStorage.setItem('user', JSON.stringify(payload.user));
         router.push('/');
       } else {
-        alert('Login failed: ' + response.message);
+        const msg = Array.isArray(response.message)
+          ? response.message.map((m: any) => m.constraints ? Object.values(m.constraints).join(', ') : m).join('\n')
+          : response.message || 'Login failed';
+        setErrorMsg(msg);
       }
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Login failed');
+      const data = err.response?.data;
+      const msg = Array.isArray(data?.message)
+        ? data.message.map((m: any) => m.constraints ? Object.values(m.constraints).join(', ') : String(m)).join('\n')
+        : data?.message || 'Login failed';
+      setErrorMsg(msg);
     } finally {
       setIsLoading(false);
     }
@@ -44,6 +53,9 @@ export default function LoginPage() {
         </div>
 
         <form onSubmit={handleLogin}>
+          {errorMsg && (
+            <div className={styles.errorMsg}>{errorMsg}</div>
+          )}
           <div className={styles.formGroup}>
             <label className={styles.label}>Username</label>
             <div className={styles.inputWrapper}>

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Home, Users, UserCheck, UserPlus, ClipboardList, HeadphonesIcon, Box, LogOut, GraduationCap, FileCheck, Settings, Globe, MapPin, Building, Activity } from 'lucide-react';
+import { Home, Users, UserCheck, UserPlus, ClipboardList, HeadphonesIcon, Box, GraduationCap, FileCheck, Settings, Globe, MapPin, Building, Activity, ChevronRight, LayoutGrid, FileText } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { menuApi } from '@/services/api';
 
@@ -19,7 +19,10 @@ const IconMap: Record<string, React.ElementType> = {
   Globe,
   MapPin,
   Building,
-  Activity
+  Activity,
+  LayoutGrid,
+  FileText,
+  Headphones: HeadphonesIcon,
 };
 
 interface Menu {
@@ -30,6 +33,14 @@ interface Menu {
   menu_remarks: string; // Used as category
   priority: number;
 }
+
+// Default menus for Teacher role
+const teacherMenus: Menu[] = [
+  { id: 1, menu_name: 'Dashboard', menu_link: '/', menu_icon: 'Home', menu_remarks: 'MAIN', priority: 1 },
+  { id: 2, menu_name: 'My Allocations', menu_link: '/allocations', menu_icon: 'ClipboardList', menu_remarks: 'ASSESSMENT', priority: 2 },
+  { id: 3, menu_name: 'Digital OMR Entry', menu_link: '/omr-entry-status', menu_icon: 'FileText', menu_remarks: 'ASSESSMENT', priority: 3 },
+  { id: 4, menu_name: 'Help & Support', menu_link: '/support', menu_icon: 'Headphones', menu_remarks: 'SUPPORT', priority: 4 },
+];
 
 export default function Sidebar() {
   const pathname = usePathname();
@@ -56,8 +67,27 @@ export default function Sidebar() {
     fetchMenus();
   }, []);
 
+  // Get user role from localStorage
+  const getUserRole = (): number | null => {
+    if (typeof window === 'undefined') return null;
+    try {
+      const userStr = localStorage.getItem('user');
+      if (userStr) {
+        const user = JSON.parse(userStr);
+        return user.roleId;
+      }
+    } catch (e) {}
+    return null;
+  };
+
+  // Determine which menus to show
+  const roleId = getUserRole();
+  // For teachers (roleId === 4), always use hardcoded menus
+  // For others, use API menus if available, otherwise fallback
+  const effectiveMenus = roleId === 4 ? teacherMenus : (menus.length > 0 ? menus : []);
+
   // Group menus by category (menu_remarks)
-  const groupedMenus = menus.reduce((acc, menu) => {
+  const groupedMenus = effectiveMenus.reduce((acc, menu) => {
     const category = menu.menu_remarks || 'MAIN';
     if (!acc[category]) {
       acc[category] = [];
@@ -100,26 +130,11 @@ export default function Sidebar() {
       </nav>
       
       <div className="sidebar-footer">
-        <Link href="/support" className="nav-item" style={{ justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-            <HeadphonesIcon size={18} />
-            <span>Support</span>
-          </div>
+        <Link href="/support" className="nav-item support-link">
+          <HeadphonesIcon size={18} />
+          <span>Support</span>
+          <ChevronRight size={16} style={{ marginLeft: 'auto' }} />
         </Link>
-        <button 
-          className="nav-item" 
-          style={{ width: '100%', justifyContent: 'flex-start', color: '#EF4444', marginTop: '0.5rem', background: 'transparent', border: 'none', cursor: 'pointer' }} 
-          onClick={() => {
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
-            window.location.href = '/login';
-          }}
-        >
-          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-            <LogOut size={18} />
-            <span>Sign Out</span>
-          </div>
-        </button>
       </div>
     </aside>
   );
